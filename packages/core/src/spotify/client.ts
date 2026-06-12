@@ -147,9 +147,10 @@ export class SpotifyClient {
     return this.request<{ tracks: { items: SpotifyTrack[] } }>(`/search?${params.toString()}`);
   }
 
-  createPlaylist(userId: string, name: string, description: string, isPublic = false) {
+  // Feb 2026: /users/{id}/playlists is gone for dev mode — use /me/playlists
+  createPlaylist(name: string, description: string, isPublic = false) {
     return this.request<{ id: string; external_urls: { spotify: string } }>(
-      `/users/${encodeURIComponent(userId)}/playlists`,
+      `/me/playlists`,
       {
         method: "POST",
         body: JSON.stringify({ name, description, public: isPublic }),
@@ -157,8 +158,9 @@ export class SpotifyClient {
     );
   }
 
+  // Feb 2026: /playlists/{id}/tracks renamed to /playlists/{id}/items
   addTracksToPlaylist(playlistId: string, uris: string[]) {
-    return this.request<void>(`/playlists/${playlistId}/tracks`, {
+    return this.request<void>(`/playlists/${playlistId}/items`, {
       method: "POST",
       body: JSON.stringify({ uris }),
     });

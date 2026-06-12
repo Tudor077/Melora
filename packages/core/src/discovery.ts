@@ -276,9 +276,8 @@ export async function createPlaylistFromSession(
   session: DiscoverySession,
   name: string,
 ): Promise<string> {
-  const user = await client.getCurrentUser();
-  const description = `Melora ${session.cadence} picks â€¢ generated ${new Date(session.generatedAt).toLocaleString()}`;
-  const playlist = await client.createPlaylist(user.id, name, description, false);
+  const description = `Melora ${session.cadence} picks - generated ${new Date(session.generatedAt).toLocaleString()}`;
+  const playlist = await client.createPlaylist(name, description, false);
   await client.addTracksToPlaylist(
     playlist.id,
     session.tracks.map((entry) => entry.track.uri),
