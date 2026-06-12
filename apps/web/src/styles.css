@@ -462,21 +462,61 @@ input[type="number"] {
 }
 .bp-stop-btn:hover { background: rgba(0,0,0,0.9); color: #fff; }
 
-/* ── CARD PROGRESS BAR ── */
-.track-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  z-index: 2;
+/* ── BPM ── */
+.track-artist {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
-.track-progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.6s linear;
+.track-artist-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-bpm-inline {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+.bpm-filter {
+  margin-bottom: 1.25rem;
+}
+
+/* ── CARD PROGRESS RING ──
+   Conic gradient clipped to a border strip via mask-composite; the arc
+   sweeps clockwise from 12 o'clock as the track plays. @property makes
+   the custom property interpolable so the ~1/sec playback updates glide. */
+@property --ring-progress {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.track-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 3px;
+  background: conic-gradient(
+    var(--accent) var(--ring-progress),
+    transparent var(--ring-progress)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 6px rgba(30, 215, 96, 0.7));
+  pointer-events: none;
+  z-index: 3;
+  transition: --ring-progress 0.9s linear;
 }
 
 /* Marquee */

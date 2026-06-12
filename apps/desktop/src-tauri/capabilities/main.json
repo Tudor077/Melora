@@ -15,7 +15,8 @@
         { "url": "https://p.scdn.co/**" },
         { "url": "https://*.akamaized.net/**" },
         { "url": "https://*.spotify.com/**" },
-        { "url": "https://*.spotifycdn.com/**" }
+        { "url": "https://*.spotifycdn.com/**" },
+        { "url": "https://api.reccobeats.com/**" }
       ]
     }
   ]

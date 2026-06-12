@@ -14,7 +14,7 @@ import {
   type SortField,
   type SortOption,
 } from "@melora/core";
-import { detectBpmFromPreview } from "../lib/bpm-detector";
+import { lookupBpms } from "../lib/bpm-lookup";
 import {
   getSpotifyClient,
   handleSpotifyCallback,
@@ -58,12 +58,9 @@ export function useMeloraApp() {
       setPlaylistUrl(null);
 
       try {
-        const bpmFallback = (track: import("@melora/core").SpotifyTrack) =>
-          track.preview_url ? detectBpmFromPreview(track.preview_url) : Promise.resolve(null);
-
         const nextSession = force
-          ? await generateDiscoverySession(client, { cadence, sort, filters, limit: 24, bpmFallback })
-          : await getOrCreateDiscoverySession(client, { cadence, sort, filters, limit: 24, bpmFallback });
+          ? await generateDiscoverySession(client, { cadence, sort, filters, limit: 24 })
+          : await getOrCreateDiscoverySession(client, { cadence, sort, filters, limit: 24 });
 
         setSession(nextSession);
       } catch (err) {
@@ -138,6 +135,36 @@ export function useMeloraApp() {
   useEffect(() => {
     if (authed) void refreshSession();
   }, [authed, cadence, refreshSession]);
+
+  // BPM enrichment via ReccoBeats: the session renders immediately, then one
+  // batch lookup fills in the badges (cached per track in localStorage).
+  useEffect(() => {
+    if (!session) return;
+    const sessionId = session.id;
+    const missingIds = session.tracks
+      .filter((entry) => entry.bpm === null)
+      .map((entry) => entry.track.id);
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    void lookupBpms(missingIds).then((bpms) => {
+      if (cancelled || bpms.size === 0) return;
+      setSession((prev) => {
+        if (!prev || prev.id !== sessionId) return prev;
+        return {
+          ...prev,
+          tracks: prev.tracks.map((e) => {
+            const bpm = bpms.get(e.track.id);
+            return bpm != null ? { ...e, bpm } : e;
+          }),
+        };
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
 
   const createPlaylist = useCallback(async () => {
     if (!session) return;

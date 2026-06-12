@@ -35,7 +35,8 @@
       "Bash(npx tsc *)",
       "Bash(cd /mnt/c/Users/user/Projects/Melora && npx tsc --noEmit --project packages/core/tsconfig.json 2>&1)",
       "WebFetch(domain:developer.spotify.com)",
-      "WebFetch(domain:community.spotify.com)"
+      "WebFetch(domain:community.spotify.com)",
+      "WebFetch(domain:reccobeats.com)"
     ]
   }
 }

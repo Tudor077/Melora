@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { EnrichedTrack } from "@melora/core";
 
 interface TrackCardProps {
@@ -35,14 +36,18 @@ export function TrackCard({ entry, isActive, isPlaying, progress, onClick }: Tra
         <div className="track-banner-overlay">
           <p className="track-album">{track.album.name}</p>
           <h3 className="track-name">{track.name}</h3>
-          <p className="track-artist">{artists}</p>
+          <p className="track-artist">
+            <span className="track-artist-name">{artists}</span>
+            {entry.bpm != null && <span className="track-bpm-inline">{entry.bpm} bpm</span>}
+          </p>
         </div>
-        {isActive && (
-          <div className="track-progress">
-            <div className="track-progress-fill" style={{ width: `${Math.min(100, progress * 100)}%` }} />
-          </div>
-        )}
       </div>
+      {isActive && (
+        <div
+          className="track-ring"
+          style={{ "--ring-progress": `${Math.min(360, progress * 360)}deg` } as CSSProperties}
+        />
+      )}
     </article>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMeloraApp } from "./hooks/useMeloraApp";
 import { useSpotifyEmbed } from "./hooks/useSpotifyEmbed";
 import { TrackCard } from "./components/TrackCard";
@@ -12,9 +13,29 @@ function formatExpiry(iso: string): string {
   return `${minutes}m`;
 }
 
+type BpmBand = "all" | "slow" | "mid" | "fast";
+
+const BPM_BANDS: Array<{ id: BpmBand; label: string }> = [
+  { id: "all", label: "All BPM" },
+  { id: "slow", label: "< 100" },
+  { id: "mid", label: "100–130" },
+  { id: "fast", label: "> 130" },
+];
+
+function inBand(bpm: number | null, band: BpmBand): boolean {
+  if (band === "all") return true;
+  if (bpm == null) return false;
+  if (band === "slow") return bpm < 100;
+  if (band === "mid") return bpm >= 100 && bpm <= 130;
+  return bpm > 130;
+}
+
 export default function App() {
   const app = useMeloraApp();
   const { playback, playTrack, togglePlay } = useSpotifyEmbed();
+  const [bpmBand, setBpmBand] = useState<BpmBand>("all");
+
+  const shownTracks = app.visibleTracks.filter((entry) => inBand(entry.bpm, bpmBand));
 
   if (!app.authed) {
     return (
@@ -66,6 +87,18 @@ export default function App() {
 
       <CadenceToggle cadence={app.cadence} onChange={app.setCadence} />
 
+      <div className="chip-row bpm-filter">
+        {BPM_BANDS.map((band) => (
+          <button
+            key={band.id}
+            className={`chip ${bpmBand === band.id ? "active" : ""}`}
+            onClick={() => setBpmBand(band.id)}
+          >
+            {band.label}
+          </button>
+        ))}
+      </div>
+
       {app.error && <p className="error banner">{app.error}</p>}
       {app.playlistUrl && (
         <p className="success banner">
@@ -80,7 +113,7 @@ export default function App() {
         <div className="loading">Finding songs you'll love…</div>
       ) : (
         <section className="track-grid">
-          {app.visibleTracks.map((entry) => (
+          {shownTracks.map((entry) => (
             <TrackCard
               key={entry.track.id}
               entry={entry}
@@ -100,8 +133,12 @@ export default function App() {
               }}
             />
           ))}
-          {!app.loading && app.visibleTracks.length === 0 && (
-            <p className="empty">No tracks found. Try refreshing to discover new music.</p>
+          {!app.loading && shownTracks.length === 0 && (
+            <p className="empty">
+              {app.visibleTracks.length === 0
+                ? "No tracks found. Try refreshing to discover new music."
+                : "No tracks in this BPM range (some are still loading their BPM)."}
+            </p>
           )}
         </section>
       )}
