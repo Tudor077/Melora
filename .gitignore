@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.expo/
+.turbo/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+target/
+src-tauri/target/
+.gradle/
+apps/desktop/src-tauri/gen/android/app/build/
+apps/desktop/src-tauri/gen/android/build/

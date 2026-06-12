@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem C:\\\\Users\\\\user\\\\Projects\\\\Melora\\\\apps -Recurse -Exclude node_modules | Where-Object {!$_.FullName.Contains\\('node_modules'\\)} | Select-Object FullName)",
+      "WebSearch",
+      "WebFetch(domain:getsongbpm.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:findapis.com)",
+      "WebFetch(domain:metacpan.org)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "PowerShell(node -e \"const m = require\\('C:/Users/user/Projects/Melora/node_modules/realtime-bpm-analyzer/dist/index.js'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\Projects\\\\Melora\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__tabs_create_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__read_console_messages",
+      "mcp__Claude_in_Chrome__read_page",
+      "mcp__Claude_in_Chrome__read_network_requests",
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "PowerShell(winget install Rustlang.Rustup --accept-source-agreements --accept-package-agreements)",
+      "PowerShell(Get-Command rustup -ErrorAction SilentlyContinue; \"$env:USERPROFILE\\\\.cargo\\\\bin\\\\rustup.exe\" | Test-Path)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.cargo\\\\bin\\\\rustup.exe\" show)",
+      "Bash(sleep 15 && tail -50 \"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-Projects-Melora\\\\d4b8d1e7-60c8-447d-820a-4e82c6aa2ec1\\\\tasks\\\\b3uaxch06.output\" 2>/dev/null || cat \"/c/Users/user/AppData/Local/Temp/claude/C--Users-user-Projects-Melora/d4b8d1e7-60c8-447d-820a-4e82c6aa2ec1/tasks/b3uaxch06.output\")",
+      "PowerShell(Get-Content \"C:\\\\Users\\\\user\\\\Projects\\\\Melora\\\\tauri-dev.log\" -Encoding Unicode | Where-Object { $_ -match \"stdout|stderr|error|warning|WebView2|missing|not found|link\" } | Select-Object -Last 40)",
+      "Bash(ls \"C:\\\\Users\\\\user\\\\Projects\\\\Melora\\\\.claude\" 2>/dev/null || mkdir \"C:\\\\Users\\\\user\\\\Projects\\\\Melora\\\\.claude\")",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_in_Chrome__get_page_text",
+      "PowerShell([System.IO.File]::ReadAllText\\(\"C:\\\\Users\\\\user\\\\Projects\\\\Melora\\\\tauri-build2.log\"\\))",
+      "PowerShell(\\(Get-Item \"C:\\\\Users\\\\user\\\\Projects\\\\Melora\\\\tauri-build2.log\"\\).Length)",
+      "Bash(npx tsc *)",
+      "Bash(cd /mnt/c/Users/user/Projects/Melora && npx tsc --noEmit --project packages/core/tsconfig.json 2>&1)",
+      "WebFetch(domain:developer.spotify.com)",
+      "WebFetch(domain:community.spotify.com)"
+    ]
+  }
+}

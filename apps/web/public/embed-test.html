@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Embed API test</title></head>
+<body style="background:#111;color:#eee;font-family:monospace;padding:20px">
+  <h3>Spotify iFrame API test</h3>
+  <button id="btn-play">play()</button>
+  <button id="btn-toggle">togglePlay()</button>
+  <button id="btn-load">loadUri(other track)</button>
+  <pre id="log" style="white-space:pre-wrap"></pre>
+  <!-- in-viewport but invisible: opacity 0 — IntersectionObserver still sees it -->
+  <div id="host" style="position:fixed;right:0;bottom:0;width:300px;height:80px;opacity:0;pointer-events:none">
+    <div id="slot"></div>
+  </div>
+
+  <script>
+    const log = (m) => {
+      console.log("[TEST] " + m);
+      document.getElementById("log").textContent += m + "\n";
+    };
+
+    let controller = null;
+
+    window.onSpotifyIframeApiReady = (api) => {
+      log("onSpotifyIframeApiReady FIRED");
+      api.createController(
+        document.getElementById("slot"),
+        { uri: "spotify:track:11dFghVXANMlKmJXsNCbNl", width: 300, height: 80 },
+        (ctrl) => {
+          controller = ctrl;
+          log("createController CALLBACK fired");
+          ctrl.addListener("ready", () => log("EVENT ready"));
+          ctrl.addListener("playback_started", (e) => log("EVENT playback_started " + JSON.stringify(e && e.data)));
+          ctrl.addListener("playback_update", (e) =>
+            log("EVENT playback_update paused=" + e.data.isPaused + " pos=" + e.data.position + " dur=" + e.data.duration));
+        }
+      );
+    };
+
+    document.getElementById("btn-play").onclick = () => { log("CLICK play()"); controller && controller.play(); };
+    document.getElementById("btn-toggle").onclick = () => { log("CLICK togglePlay()"); controller && controller.togglePlay(); };
+    document.getElementById("btn-load").onclick = () => {
+      log("CLICK loadUri + play");
+      controller && controller.loadUri("spotify:track:4cOdK2wGLETKBW3PvgPWqT");
+      controller && controller.play();
+    };
+
+    const s = document.createElement("script");
+    s.src = "https://open.spotify.com/embed/iframe-api/v1";
+    s.async = true;
+    s.onload = () => log("api script loaded");
+    s.onerror = () => log("api script FAILED to load");
+    document.body.appendChild(s);
+    log("page boot");
+  </script>
+</body>
+</html>

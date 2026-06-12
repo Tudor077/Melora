@@ -1,0 +1,25 @@
+{
+  "name": "melora",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Hourly & daily music discovery powered by Spotify",
+  "scripts": {
+    "dev": "npm run dev --workspace @melora/web",
+    "dev:web": "npm run dev --workspace @melora/web",
+    "dev:web:5174": "npm run dev:5174 --workspace @melora/web",
+    "dev:desktop": "npm run tauri dev --workspace @melora/desktop",
+    "dev:mobile": "npm run start --workspace @melora/mobile",
+    "build": "npm run build --workspaces --if-present",
+    "build:web": "npm run build --workspace @melora/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

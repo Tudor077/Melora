@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Main window capabilities",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "deep-link:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://accounts.spotify.com/**" },
+        { "url": "https://api.spotify.com/**" },
+        { "url": "https://p.scdn.co/**" },
+        { "url": "https://*.akamaized.net/**" },
+        { "url": "https://*.spotify.com/**" },
+        { "url": "https://*.spotifycdn.com/**" }
+      ]
+    }
+  ]
+}

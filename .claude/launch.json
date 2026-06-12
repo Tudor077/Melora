@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "download-page",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".", "--listen", "4000", "--no-clipboard"],
+      "port": 4000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@melora/web"],
+      "port": 5173
+    },
+    {
+      "name": "web-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:5174", "--workspace", "@melora/web"],
+      "port": 5174,
+      "autoPort": false
+    }
+  ]
+}

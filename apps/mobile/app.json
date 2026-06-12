@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Melora",
+    "slug": "melora",
+    "version": "0.1.0",
+    "scheme": "melora",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.melora.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0b0f14"
+      },
+      "package": "com.melora.app"
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}

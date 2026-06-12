@@ -1,0 +1,37 @@
+{
+  "latest": "0.2.0",
+  "releases": [
+    {
+      "version": "0.2.0",
+      "label": "v1.5",
+      "date": "2026-06-12",
+      "notes": [
+        "New discovery algorithm — finds songs you have not heard, from artists outside your rotation",
+        "Collab search: tracks where your favorite artists are featured by artists you do not know",
+        "Adapted to Spotify Feb 2026 dev-mode API restrictions (search limit 10, no batch endpoints)",
+        "Removed the filter bar (sort and vibe filters relied on deprecated Spotify data)",
+        "Cleaner console — no more guaranteed-to-fail API calls"
+      ],
+      "downloads": {
+        "windows": "releases/v0.2.0/Melora-Setup.exe",
+        "android": "releases/v0.2.0/Melora.apk",
+        "mac": null
+      }
+    },
+    {
+      "version": "0.1.0",
+      "label": "Alpha",
+      "date": "2026-06-11",
+      "notes": [
+        "Initial release",
+        "Hourly & daily Spotify discovery",
+        "Sort by BPM, genre, vibe, energy",
+        "Export to Spotify playlist"
+      ],
+      "downloads": {
+        "windows": "releases/v0.1.0/Melora-Setup.exe",
+        "mac": null
+      }
+    }
+  ]
+}
