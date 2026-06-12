@@ -1,6 +1,22 @@
 {
-  "latest": "0.2.0",
+  "latest": "0.3.0",
   "releases": [
+    {
+      "version": "0.3.0",
+      "label": "v1.6",
+      "date": "2026-06-12",
+      "notes": [
+        "Headless player: play/pause directly on track cards, no more floating mini-player",
+        "Glowing progress ring around the active card, synced to real playback",
+        "BPM on every card (via ReccoBeats) with BPM range filters",
+        "Fixed Save as playlist (Spotify Feb 2026 endpoint changes)"
+      ],
+      "downloads": {
+        "windows": "releases/v0.3.0/Melora-Setup.exe",
+        "android": "releases/v0.3.0/Melora.apk",
+        "mac": null
+      }
+    },
     {
       "version": "0.2.0",
       "label": "v1.5",
