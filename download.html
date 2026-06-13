@@ -4,322 +4,305 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Melora — Download</title>
+  <meta name="description" content="Melora — find your next favorite song every day, picked from your Spotify taste. Download for Windows and Android." />
+  <link rel="icon" type="image/png" href="melora-logo.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface2: #1e1e1e;
-      --border: #2a2a2a;
-      --text: #f0f0f0;
-      --muted: #888;
+      --bg: #070a12;
+      --bg2: #0d1322;
+      --surface: rgba(255,255,255,0.035);
+      --surface2: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.09);
+      --text: #eef2f8;
+      --muted: #93a1b8;
+      --navy: #1c2a4a;
+      --periwinkle: #a9c4ef;
       --accent: #1db954;
-      --accent-dim: #166e34;
-      --danger: #e34040;
+      --accent-dim: rgba(29,185,84,0.14);
     }
 
+    html { scroll-behavior: smooth; }
     body {
-      background: var(--bg);
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #16213d 0%, transparent 60%),
+        radial-gradient(800px 500px at 90% 10%, rgba(169,196,239,0.08) 0%, transparent 55%),
+        var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      -webkit-font-smoothing: antialiased;
     }
+
+    .wrap { width: 100%; max-width: 960px; margin: 0 auto; padding: 0 24px; }
 
     /* ── NAV ── */
     nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 40px;
-      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px; max-width: 960px; margin: 0 auto; width: 100%;
     }
-    .logo { font-weight: 700; font-size: 1.1rem; letter-spacing: -.3px; color: var(--accent); }
-    nav a { color: var(--muted); text-decoration: none; font-size: .9rem; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand img { width: 30px; height: 30px; display: block; }
+    .brand span { font-weight: 700; font-size: 1.05rem; letter-spacing: -.3px; }
+    .nav-links { display: flex; gap: 22px; }
+    nav a { color: var(--muted); text-decoration: none; font-size: .9rem; transition: color .15s; }
     nav a:hover { color: var(--text); }
 
     /* ── HERO ── */
-    .hero {
-      text-align: center;
-      padding: 80px 40px 60px;
-      max-width: 640px;
-      margin: 0 auto;
+    .hero { text-align: center; padding: 64px 0 28px; }
+    .hero-logo {
+      width: 104px; height: 104px; margin: 0 auto 28px; display: block;
+      filter: drop-shadow(0 12px 40px rgba(28,42,74,0.9)) drop-shadow(0 0 24px rgba(169,196,239,0.25));
+      animation: float 6s ease-in-out infinite;
     }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
     .eyebrow {
-      font-size: .75rem;
-      font-weight: 600;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 16px;
+      font-size: .74rem; font-weight: 700; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--periwinkle);
+      margin-bottom: 18px; opacity: .85;
     }
     h1 {
-      font-size: clamp(2rem, 5vw, 3.2rem);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -.04em;
-      margin-bottom: 16px;
+      font-size: clamp(2.2rem, 6vw, 3.8rem);
+      font-weight: 800; line-height: 1.08; letter-spacing: -.035em;
+      max-width: 16ch; margin: 0 auto 20px;
+      background: linear-gradient(180deg, #ffffff 30%, #b9c6dd 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
     }
     .subtitle {
-      color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.6;
-      margin-bottom: 40px;
+      color: var(--muted); font-size: 1.08rem; line-height: 1.6;
+      max-width: 54ch; margin: 0 auto 36px;
     }
 
-    /* ── DOWNLOAD CARD ── */
-    .download-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px;
-      max-width: 480px;
-      margin: 0 auto 80px;
-      text-align: left;
+    /* ── DOWNLOAD BUTTONS ── */
+    .downloads {
+      display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 18px;
     }
-    .version-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--accent-dim);
-      color: var(--accent);
-      font-size: .75rem;
-      font-weight: 700;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 99px;
-      margin-bottom: 20px;
-    }
-    .version-badge .dot {
-      width: 6px; height: 6px;
-      background: var(--accent);
-      border-radius: 50%;
-    }
-    .card-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
-    .card-date { color: var(--muted); font-size: .85rem; margin-bottom: 24px; }
-
-    .release-notes {
-      list-style: none;
-      margin-bottom: 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .release-notes li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      font-size: .9rem;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-    .release-notes li::before {
-      content: "✓";
-      color: var(--accent);
-      font-weight: 700;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-
-    .btn-group { display: flex; flex-direction: column; gap: 10px; }
     .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 14px 20px;
-      border-radius: 10px;
-      font-size: .95rem;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      border: none;
-      transition: opacity .15s, transform .1s;
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 26px; border-radius: 14px;
+      text-decoration: none; cursor: pointer; border: 1px solid transparent;
+      transition: transform .12s ease, box-shadow .2s ease, opacity .15s;
+      min-width: 260px; text-align: left;
     }
-    .btn:active { transform: scale(.98); }
-    .btn-primary { background: var(--accent); color: #000; }
-    .btn-primary:hover { opacity: .9; }
-    .btn-primary.disabled {
-      background: var(--surface2);
-      color: var(--muted);
-      cursor: not-allowed;
-      border: 1px solid var(--border);
-    }
-    .btn-secondary {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-secondary:hover { border-color: var(--muted); }
-    .btn-icon { font-size: 1.1rem; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0) scale(.99); }
+    .btn .ico { flex-shrink: 0; display: flex; }
+    .btn .txt { display: flex; flex-direction: column; line-height: 1.2; }
+    .btn .txt b { font-size: 1rem; font-weight: 700; }
+    .btn .txt small { font-size: .78rem; opacity: .75; font-weight: 500; margin-top: 2px; }
 
-    /* ── HISTORY ── */
-    .section { max-width: 640px; margin: 0 auto; padding: 0 40px 80px; }
-    .section h2 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 20px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      font-size: .75rem;
+    .btn-win {
+      background: linear-gradient(180deg, #23c265, var(--accent));
+      color: #04240f;
+      box-shadow: 0 8px 30px rgba(29,185,84,0.35);
     }
-    .history-list { display: flex; flex-direction: column; gap: 2px; }
-    .history-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      border-radius: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      gap: 16px;
+    .btn-and {
+      background: linear-gradient(180deg, #2a3c66, var(--navy));
+      color: #eaf1ff;
+      border-color: rgba(169,196,239,0.25);
+      box-shadow: 0 8px 30px rgba(28,42,74,0.5);
     }
-    .history-item:not(:last-child) { margin-bottom: 2px; }
-    .history-meta { display: flex; align-items: center; gap: 12px; }
-    .history-version { font-weight: 700; font-size: .95rem; }
-    .history-label {
-      font-size: .72rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      padding: 2px 8px;
-      border-radius: 99px;
-      background: var(--surface2);
-      color: var(--muted);
-      border: 1px solid var(--border);
+    .btn.highlight { outline: 2px solid var(--periwinkle); outline-offset: 3px; }
+
+    .dl-meta {
+      color: var(--muted); font-size: .82rem; margin-bottom: 14px;
+      display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;
     }
-    .history-label.latest { background: var(--accent-dim); color: var(--accent); border-color: transparent; }
-    .history-date { color: var(--muted); font-size: .82rem; }
-    .history-dl {
-      color: var(--accent);
-      text-decoration: none;
-      font-size: .85rem;
-      font-weight: 600;
-      white-space: nowrap;
+    .ver-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--accent-dim); color: #4ade80;
+      font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+      padding: 4px 10px; border-radius: 99px;
     }
-    .history-dl:hover { text-decoration: underline; }
-    .history-dl.unavailable { color: var(--muted); cursor: default; pointer-events: none; }
+    .ver-badge .dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; }
+
+    .spotify-note {
+      display: inline-flex; align-items: center; gap: 7px;
+      color: var(--muted); font-size: .8rem; margin-top: 6px;
+    }
+    .spotify-note svg { color: var(--accent); }
+
+    /* ── FEATURES ── */
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px; margin: 72px 0 40px;
+    }
+    .feature {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 22px;
+    }
+    .feature .fico {
+      width: 40px; height: 40px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(169,196,239,0.12); color: var(--periwinkle);
+      margin-bottom: 14px;
+    }
+    .feature h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .feature p { color: var(--muted); font-size: .88rem; line-height: 1.5; }
+
+    /* ── INSTALL NOTES ── */
+    .notes {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 56px;
+    }
+    .note {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px;
+    }
+    .note h4 { font-size: .9rem; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .note p { color: var(--muted); font-size: .84rem; line-height: 1.55; }
+    .note code { background: var(--surface2); padding: 1px 6px; border-radius: 6px; font-size: .82em; }
+
+    /* ── TERMS ── */
+    .terms { margin-bottom: 56px; }
+    details {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 0 20px; overflow: hidden;
+    }
+    summary {
+      cursor: pointer; padding: 18px 0; font-weight: 700; font-size: .95rem;
+      list-style: none; display: flex; align-items: center; justify-content: space-between;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--muted); font-size: 1.3rem; font-weight: 400; }
+    details[open] summary::after { content: "−"; }
+    .terms-body { padding: 0 0 20px; color: var(--muted); font-size: .86rem; line-height: 1.7; }
+    .terms-body p { margin-bottom: 12px; }
+    .terms-body strong { color: var(--text); }
 
     /* ── FOOTER ── */
     footer {
-      margin-top: auto;
-      padding: 24px 40px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: var(--muted);
-      font-size: .8rem;
+      margin-top: auto; padding: 26px 24px; border-top: 1px solid var(--border);
+      max-width: 960px; margin-left: auto; margin-right: auto; width: 100%;
+      display: flex; align-items: center; justify-content: space-between;
+      color: var(--muted); font-size: .8rem; flex-wrap: wrap; gap: 10px;
     }
     footer a { color: var(--muted); text-decoration: none; }
     footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      .notes { grid-template-columns: 1fr; }
+      .btn { min-width: 0; width: 100%; }
+      .downloads { flex-direction: column; align-items: stretch; }
+    }
   </style>
 </head>
 <body>
 
 <nav>
-  <span class="logo">Melora</span>
-  <a href="index.html">← Back to app</a>
+  <span class="brand"><img src="melora-logo.png" alt="" /><span>Melora</span></span>
+  <span class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#download">Download</a>
+  </span>
 </nav>
 
-<div class="hero">
-  <p class="eyebrow">Download</p>
-  <h1>Get Melora for Windows</h1>
-  <p class="subtitle">
-    Hourly &amp; daily music discovery powered by Spotify.<br />
-    Sorted by BPM, genre, vibe, and more.
-  </p>
-</div>
+<div class="wrap">
 
-<div id="latest-card" class="download-card">
-  <!-- populated by JS -->
-</div>
+  <section class="hero" id="download">
+    <img class="hero-logo" src="melora-logo.png" alt="Melora" />
+    <p class="eyebrow">Powered by your Spotify taste</p>
+    <h1>Find your next favorite song. Every single day.</h1>
+    <p class="subtitle">
+      Melora pulls fresh tracks from the artists and genres you already love —
+      preview them, swipe through on your phone, and save the keepers to Spotify in one tap.
+    </p>
 
-<div class="section">
-  <h2>Release History</h2>
-  <div id="history-list" class="history-list">
-    <!-- populated by JS -->
-  </div>
+    <div class="downloads">
+      <a class="btn btn-win" id="btn-win" href="releases/v0.3.0/Melora-0.3.0_x64.msi" download>
+        <span class="ico">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+        </span>
+        <span class="txt"><b>Download for Windows</b><small>x64 installer (.msi) · 5.1 MB</small></span>
+      </a>
+
+      <a class="btn btn-and" id="btn-and" href="releases/v0.3.0/Melora-0.3.0.apk" download>
+        <span class="ico">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24a11.46 11.46 0 0 0-8.94 0L5.65 5.67c-.19-.29-.57-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5"/></svg>
+        </span>
+        <span class="txt"><b>Download for Android</b><small>universal (.apk) · 18 MB</small></span>
+      </a>
+    </div>
+
+    <div class="dl-meta">
+      <span class="ver-badge"><span class="dot"></span>Latest · v0.3.0</span>
+      <span>Released 13 Jun 2026</span>
+    </div>
+    <div class="spotify-note">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0m5.52 17.34c-.24.36-.66.48-1.02.24-2.82-1.74-6.36-2.1-10.56-1.14-.42.12-.78-.18-.9-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.48.66.3 1.02m1.44-3.3c-.3.42-.84.6-1.26.3-3.24-1.98-8.16-2.58-11.94-1.38-.48.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14 4.38-1.32 9.78-.66 13.5 1.62.36.18.54.78.24 1.2m.12-3.36C15.24 8.4 8.82 8.16 5.1 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.32-1.32 11.4-1.02 15.9 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3"/></svg>
+      Requires a free or Premium Spotify account
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="feature">
+      <div class="fico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></div>
+      <h3>Hourly &amp; daily picks</h3>
+      <p>A fresh batch of songs on a schedule — built from your top artists and the genres you actually listen to.</p>
+    </div>
+    <div class="feature">
+      <div class="fico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>Swipe to discover</h3>
+      <p>On your phone, every track is full-screen — swipe to the next one, and it plays automatically. Reels, but for new music.</p>
+    </div>
+    <div class="feature">
+      <div class="fico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>BPM at a glance</h3>
+      <p>Every song shows its tempo, with quick filters for slow, mid and fast — find the energy you're after.</p>
+    </div>
+    <div class="feature">
+      <div class="fico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z" stroke-linejoin="round"/></svg></div>
+      <h3>Save what you love</h3>
+      <p>Tap the heart to add a track to your Liked Songs, or export a whole session as a Spotify playlist in one tap.</p>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="note">
+      <h4>🪟 Installing on Windows</h4>
+      <p>Run the <code>.msi</code> and follow the wizard. Windows SmartScreen may show a notice for new publishers — choose <strong>More info → Run anyway</strong>. Published by <strong>Melora</strong>.</p>
+    </div>
+    <div class="note">
+      <h4>🤖 Installing on Android</h4>
+      <p>Open the <code>.apk</code> and allow installs from your browser when prompted (<strong>Settings → Install unknown apps</strong>). Updates keep your login.</p>
+    </div>
+  </section>
+
+  <section class="terms">
+    <details>
+      <summary>Terms &amp; Conditions</summary>
+      <div class="terms-body">
+        <p>By downloading and using Melora, you agree to the following:</p>
+        <p><strong>1. Free software, as-is.</strong> Melora is provided free of charge and “as is”, without warranty of any kind. You use it at your own risk; we are not liable for any loss or damage arising from its use.</p>
+        <p><strong>2. Spotify account required.</strong> Melora connects to your Spotify account through Spotify's official login and API. Your use of Spotify remains subject to Spotify's own Terms of Service. Melora is an independent project and is <strong>not affiliated with, endorsed by, or sponsored by Spotify</strong>.</p>
+        <p><strong>3. Your data stays yours.</strong> Melora runs entirely on your device. It does not operate its own servers and does not collect, store, or share your personal data. Authentication tokens are kept locally on your device only.</p>
+        <p><strong>4. Permissions.</strong> Melora only requests the Spotify permissions needed to read your taste profile and, when you ask, to save tracks or create playlists. You can revoke access at any time from your Spotify account settings.</p>
+        <p><strong>5. Music &amp; content.</strong> All music, artwork and metadata belong to their respective rights holders and are delivered by Spotify. Melora does not host or distribute any audio.</p>
+        <p style="margin-bottom:0">Last updated 13 June 2026.</p>
+      </div>
+    </details>
+  </section>
+
 </div>
 
 <footer>
-  <span>© 2026 Melora</span>
-  <span>Built with <a href="https://tauri.app" target="_blank">Tauri</a> &amp; <a href="https://react.dev" target="_blank">React</a></span>
+  <span>© 2026 Melora · v0.3.0</span>
+  <span>Built with <a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a> &amp; <a href="https://react.dev" target="_blank" rel="noopener">React</a> · Powered by Spotify</span>
 </footer>
 
 <script>
-  const VERSIONS_URL = "./releases/versions.json";
-
-  const windowsIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>`;
-  const dlIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
-
-  async function load() {
-    let data;
-    try {
-      const res = await fetch(VERSIONS_URL);
-      data = await res.json();
-    } catch {
-      document.getElementById("latest-card").innerHTML =
-        `<p style="color:var(--muted);text-align:center">Could not load release data.</p>`;
-      return;
-    }
-
-    const latest = data.releases.find(r => r.version === data.latest) || data.releases[0];
-    renderLatest(latest);
-    renderHistory(data.releases, data.latest);
-  }
-
-  function renderLatest(r) {
-    const hasWin = !!r.downloads?.windows;
-    document.getElementById("latest-card").innerHTML = `
-      <span class="version-badge"><span class="dot"></span>Latest — v${r.version}</span>
-      <p class="card-title">Melora ${r.label || "v" + r.version}</p>
-      <p class="card-date">Released ${formatDate(r.date)}</p>
-      <ul class="release-notes">
-        ${r.notes.map(n => `<li>${n}</li>`).join("")}
-      </ul>
-      <div class="btn-group">
-        ${hasWin
-          ? `<a class="btn btn-primary" href="${r.downloads.windows}">
-               <span class="btn-icon">${windowsIcon}</span> Download for Windows (.exe)
-             </a>`
-          : `<span class="btn btn-primary disabled">
-               <span class="btn-icon">${windowsIcon}</span> Windows build coming soon
-             </span>`
-        }
-      </div>
-    `;
-  }
-
-  function renderHistory(releases, latest) {
-    document.getElementById("history-list").innerHTML = releases.map(r => {
-      const isLatest = r.version === latest;
-      const hasWin = !!r.downloads?.windows;
-      return `
-        <div class="history-item">
-          <div class="history-meta">
-            <span class="history-version">v${r.version}</span>
-            <span class="history-label ${isLatest ? "latest" : ""}">${isLatest ? "Latest" : r.label || "Stable"}</span>
-            <span class="history-date">${formatDate(r.date)}</span>
-          </div>
-          ${hasWin
-            ? `<a class="history-dl" href="${r.downloads.windows}">${dlIcon} .exe</a>`
-            : `<span class="history-dl unavailable">Not yet built</span>`
-          }
-        </div>
-      `;
-    }).join("");
-  }
-
-  function formatDate(iso) {
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  }
-
-  load();
+  // Highlight the button matching the visitor's platform.
+  (function () {
+    var ua = navigator.userAgent || "";
+    var isAndroid = /Android/i.test(ua);
+    var isWindows = /Windows/i.test(ua);
+    if (isAndroid) document.getElementById("btn-and").classList.add("highlight");
+    else if (isWindows) document.getElementById("btn-win").classList.add("highlight");
+  })();
 </script>
 </body>
 </html>

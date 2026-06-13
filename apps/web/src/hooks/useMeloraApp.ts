@@ -28,10 +28,13 @@ function loadPinnedGenres(): string[] {
   }
 }
 import {
+  clearClientId,
+  getClientId,
   getSpotifyClient,
   handleSpotifyCallback,
   isAuthenticated,
   logout,
+  setClientId as persistClientId,
   startSpotifyLogin,
 } from "../lib/spotify-auth";
 
@@ -39,6 +42,20 @@ const IS_TAURI = Boolean(import.meta.env.TAURI_ENV_PLATFORM);
 
 export function useMeloraApp() {
   const [authed, setAuthed] = useState(isAuthenticated());
+  const [clientId, setClientIdState] = useState<string | null>(getClientId());
+  const saveClientId = useCallback((id: string) => {
+    persistClientId(id);
+    setClientIdState(getClientId());
+  }, []);
+  // Reset to the setup screen: drop the Client ID and any session/login tied
+  // to it (a token from a different app would be invalid anyway).
+  const changeClientId = useCallback(() => {
+    logout();
+    clearClientId();
+    setAuthed(false);
+    setSession(null);
+    setClientIdState(null);
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cadence, setCadence] = useState<DiscoveryCadence>("hourly");
@@ -306,6 +323,9 @@ export function useMeloraApp() {
 
   return {
     authed,
+    clientId,
+    saveClientId,
+    changeClientId,
     loading,
     error,
     cadence,

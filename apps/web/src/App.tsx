@@ -4,6 +4,7 @@ import { useSpotifyEmbed } from "./hooks/useSpotifyEmbed";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { TrackCard } from "./components/TrackCard";
 import { MobileFeed } from "./components/MobileFeed";
+import { SpotifySetup } from "./components/SpotifySetup";
 import { CadenceToggle } from "./components/CadenceToggle";
 
 function formatExpiry(iso: string): string {
@@ -41,6 +42,10 @@ export default function App() {
 
   const shownTracks = app.visibleTracks.filter((entry) => inBand(entry.bpm, bpmBand));
 
+  if (!app.clientId) {
+    return <SpotifySetup onSave={app.saveClientId} />;
+  }
+
   if (!app.authed) {
     return (
       <div className="page landing">
@@ -57,8 +62,10 @@ export default function App() {
           </button>
           {app.error && <p className="error">{app.error}</p>}
           <div className="setup-note">
-            <strong>First time?</strong> Copy <code>.env.example</code> to <code>apps/web/.env</code>{" "}
-            and add your Spotify Client ID. See README for setup steps.
+            Using your own Spotify app.{" "}
+            <button className="link-btn" onClick={app.changeClientId}>
+              Use a different Client ID
+            </button>
           </div>
         </div>
       </div>

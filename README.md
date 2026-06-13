@@ -2,6 +2,37 @@
 
 Discover new songs **hourly** or **daily** based on what you already love on Spotify. Sort and filter picks by **BPM**, **genre**, **vibe**, energy, mood, popularity, and release date — then export to a fresh Spotify playlist.
 
+On your phone, every track is full-screen — **swipe** to the next one and it plays automatically. Tap the **heart** to save it to your Liked Songs.
+
+---
+
+## Download & install (for users)
+
+Grab the latest build from the [download page](download.html) or the releases folder:
+
+- **Windows** — `releases/v0.3.0/Melora-Setup.exe` (or the `.msi`). SmartScreen may warn for a new publisher → **More info → Run anyway**.
+- **Android** — `releases/v0.3.0/Melora.apk`. Allow installs from your browser when prompted.
+
+### First run: connect your own Spotify app
+
+Melora runs on **your own free Spotify app**, so there are no account limits and nothing to wait for. The app walks you through it on first launch — it takes ~2 minutes, once:
+
+1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and click **Create app**.
+2. Give it any name. Add this **Redirect URI** exactly:
+
+   ```
+   melora://callback
+   ```
+
+   and tick **Web API**, then save.
+3. Open the app's **Settings**, copy its **Client ID**, and paste it into Melora's setup screen.
+
+That's it — you're the owner of your own Spotify app, so you're authorised automatically. (You can change the Client ID later from the login screen.)
+
+> **Why?** Spotify apps start in *Development Mode*, where only up to 25 manually-added users can use a given app. Letting each person run their own app sidesteps that entirely — no allowlist, no Spotify approval needed.
+
+---
+
 ## Monorepo layout
 
 ```

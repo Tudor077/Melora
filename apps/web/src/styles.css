@@ -153,6 +153,74 @@ h1 {
   font-size: 0.92rem;
 }
 
+/* ── SPOTIFY CLIENT-ID SETUP ── */
+.setup-hero .brand-logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 1rem;
+}
+
+.setup-steps {
+  margin: 1.75rem 0 1.5rem;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.setup-steps li { padding-left: 0.3rem; }
+.setup-steps strong { color: var(--text); }
+
+.copy-field {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.55rem 0.75rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: var(--accent);
+  user-select: all;
+}
+
+.setup-form {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.setup-input {
+  flex: 1;
+  min-width: 200px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.8rem 0.95rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+.setup-form .primary { margin-top: 0; }
+
+.setup-hint {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;

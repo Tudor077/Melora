@@ -22,6 +22,32 @@ const DESKTOP_REDIRECT_URI = "melora://callback";
 const TOKEN_KEY = "melora:spotify:tokens";
 const STATE_KEY = "melora:spotify:oauth_state";
 const VERIFIER_KEY = "melora:spotify:pkce_verifier";
+const CLIENT_ID_KEY = "melora:spotify:client_id";
+
+// "Bring your own Spotify app": each user creates their own free Spotify app
+// and pastes its Client ID here (stored locally). This sidesteps the 25-user
+// Development-mode allowlist entirely — each user is the owner of their own
+// app. A baked-in VITE_SPOTIFY_CLIENT_ID is only a convenience fallback for
+// local dev; distributed builds ship without it so users supply their own.
+export function getClientId(): string | null {
+  const stored = localStorage.getItem(CLIENT_ID_KEY)?.trim();
+  if (stored) return stored;
+  const env = (import.meta.env.VITE_SPOTIFY_CLIENT_ID ?? "").trim();
+  if (env && env !== "your_spotify_client_id_here") return env;
+  return null;
+}
+
+export function setClientId(id: string): void {
+  localStorage.setItem(CLIENT_ID_KEY, id.trim());
+}
+
+export function clearClientId(): void {
+  localStorage.removeItem(CLIENT_ID_KEY);
+}
+
+export function hasClientId(): boolean {
+  return getClientId() !== null;
+}
 
 // PKCE state/verifier MUST survive the round-trip through the external
 // browser. On Android the app is backgrounded while the system browser
@@ -43,10 +69,10 @@ const authStore = {
 };
 
 function getConfig() {
-  const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+  const clientId = getClientId();
 
-  if (!clientId || clientId === "your_spotify_client_id_here") {
-    throw new Error("Set VITE_SPOTIFY_CLIENT_ID in apps/web/.env");
+  if (!clientId) {
+    throw new Error("No Spotify Client ID set. Add yours in Melora's setup screen.");
   }
 
   const redirectUri = IS_TAURI
