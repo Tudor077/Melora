@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useMeloraApp } from "./hooks/useMeloraApp";
 import { useSpotifyEmbed } from "./hooks/useSpotifyEmbed";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { TrackCard } from "./components/TrackCard";
+import { MobileFeed } from "./components/MobileFeed";
 import { CadenceToggle } from "./components/CadenceToggle";
 
 function formatExpiry(iso: string): string {
@@ -32,7 +34,9 @@ function inBand(bpm: number | null, band: BpmBand): boolean {
 
 export default function App() {
   const app = useMeloraApp();
-  const { playback, playTrack, togglePlay } = useSpotifyEmbed();
+  const embed = useSpotifyEmbed();
+  const { playback, playTrack, togglePlay } = embed;
+  const isMobile = useIsMobile();
   const [bpmBand, setBpmBand] = useState<BpmBand>("all");
 
   const shownTracks = app.visibleTracks.filter((entry) => inBand(entry.bpm, bpmBand));
@@ -41,6 +45,7 @@ export default function App() {
     return (
       <div className="page landing">
         <div className="hero">
+          <img className="brand-logo" src="/melora-logo.png" alt="Melora" />
           <p className="eyebrow">Melora</p>
           <h1>Fresh songs on your schedule</h1>
           <p className="lede">
@@ -58,6 +63,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (isMobile) {
+    return <MobileFeed app={app} embed={embed} tracks={shownTracks} />;
   }
 
   return (
@@ -97,6 +106,34 @@ export default function App() {
             {band.label}
           </button>
         ))}
+      </div>
+
+      <div className="chip-row genre-pins">
+        <span className="label genre-pins-label">Your genres:</span>
+        {app.pinnedGenres.map((genre) => (
+          <button
+            key={genre}
+            className="chip active"
+            title="Remove"
+            onClick={() => app.removePinnedGenre(genre)}
+          >
+            {genre} ✕
+          </button>
+        ))}
+        <form
+          className="genre-pin-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const input = e.currentTarget.elements.namedItem("genre") as HTMLInputElement;
+            if (input.value.trim()) {
+              app.addPinnedGenre(input.value);
+              input.value = "";
+              app.refreshSession();
+            }
+          }}
+        >
+          <input name="genre" className="genre-pin-input" placeholder="+ add genre (e.g. breakcore)" autoComplete="off" />
+        </form>
       </div>
 
       {app.error && <p className="error banner">{app.error}</p>}

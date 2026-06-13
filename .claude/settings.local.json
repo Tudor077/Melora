@@ -36,7 +36,22 @@
       "Bash(cd /mnt/c/Users/user/Projects/Melora && npx tsc --noEmit --project packages/core/tsconfig.json 2>&1)",
       "WebFetch(domain:developer.spotify.com)",
       "WebFetch(domain:community.spotify.com)",
-      "WebFetch(domain:reccobeats.com)"
+      "WebFetch(domain:reccobeats.com)",
+      "Bash(export ANDROID_HOME=\"/c/Android/sdk\")",
+      "Bash(\"/c/Android/sdk/platform-tools/adb.exe\" devices *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(/c/Android/sdk/platform-tools/adb.exe logcat *)",
+      "Bash(\"/c/Android/sdk/platform-tools/adb.exe\" install *)",
+      "Bash(/c/Android/sdk/platform-tools/adb.exe shell *)",
+      "Bash(\"/c/Android/sdk/platform-tools/adb.exe\" exec-out *)",
+      "Bash(grep -rn \"struct AssociatedDomain\\\\|scheme\\\\|host\\\\|pub mobile\\\\|pub struct Config\" \"$HOME/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-plugin-deep-link-2.4.9/src/config.rs\" 2>/dev/null | head -40)",
+      "Bash(/c/Android/sdk/platform-tools/adb.exe install *)",
+      "Bash(/c/Android/sdk/platform-tools/adb.exe exec-out *)",
+      "Bash(:)",
+      "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|ico\\)$\")",
+      "Bash(grep -c \"Finished 1 APK\" \"C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Projects-Melora/6ed51a28-6b18-4a5b-b095-1933efcdb6ea/tasks/b2fbv7b4y.output\")",
+      "Bash(git add *)",
+      "Bash(git commit -m '@ *)"
     ]
   }
 }

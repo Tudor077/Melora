@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPlaylistFromSession,
   DEFAULT_VIBES,
@@ -15,6 +15,18 @@ import {
   type SortOption,
 } from "@melora/core";
 import { lookupBpms } from "../lib/bpm-lookup";
+import { lookupArtistGenres } from "../lib/artist-genres";
+import { stopPlayback } from "./useSpotifyEmbed";
+
+const PINNED_GENRES_KEY = "melora:pinned-genres:v1";
+
+function loadPinnedGenres(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(PINNED_GENRES_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
 import {
   getSpotifyClient,
   handleSpotifyCallback,
@@ -35,6 +47,10 @@ export function useMeloraApp() {
   const [filters, setFilters] = useState<DiscoveryFilters>({});
   const [session, setSession] = useState<DiscoverySession | null>(null);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
+  const [pinnedGenres, setPinnedGenres] = useState<string[]>(loadPinnedGenres);
+  // Ref mirrors pinnedGenres synchronously so a refresh fired right after
+  // add/remove sees the new list (state updates are async)
+  const pinnedGenresRef = useRef<string[]>(pinnedGenres);
 
   const client = useMemo(() => getSpotifyClient(), []);
   const sort: SortOption = useMemo(
@@ -53,14 +69,30 @@ export function useMeloraApp() {
   const refreshSession = useCallback(
     async (force = false) => {
       if (!isAuthenticated()) return;
+      // Stop any track left playing from the previous session so the headless
+      // embed doesn't keep playing something that's no longer on screen.
+      stopPlayback();
       setLoading(true);
       setError(null);
       setPlaylistUrl(null);
 
       try {
+        // Taste profile: MusicBrainz tags for top artists (Spotify's own
+        // genre field is empty for niche artists) + user-pinned genres.
+        const pinned = pinnedGenresRef.current;
+        let extraGenres = [...pinned];
+        try {
+          const top = await client.getTopArtists(12, "medium_term");
+          const mbGenres = await lookupArtistGenres(top.items.map((a) => a.name));
+          extraGenres = [...new Set([...pinned, ...mbGenres])];
+        } catch {
+          // profiling is best-effort; pinned genres still apply
+        }
+
+        const options = { cadence, sort, filters, limit: 24, extraGenres };
         const nextSession = force
-          ? await generateDiscoverySession(client, { cadence, sort, filters, limit: 24 })
-          : await getOrCreateDiscoverySession(client, { cadence, sort, filters, limit: 24 });
+          ? await generateDiscoverySession(client, options)
+          : await getOrCreateDiscoverySession(client, options);
 
         setSession(nextSession);
       } catch (err) {
@@ -71,6 +103,22 @@ export function useMeloraApp() {
     },
     [cadence, client, filters, sort],
   );
+
+  const addPinnedGenre = useCallback((genre: string) => {
+    const clean = genre.trim().toLowerCase();
+    if (!clean || pinnedGenresRef.current.includes(clean)) return;
+    const next = [...pinnedGenresRef.current, clean];
+    pinnedGenresRef.current = next;
+    localStorage.setItem(PINNED_GENRES_KEY, JSON.stringify(next));
+    setPinnedGenres(next);
+  }, []);
+
+  const removePinnedGenre = useCallback((genre: string) => {
+    const next = pinnedGenresRef.current.filter((g) => g !== genre);
+    pinnedGenresRef.current = next;
+    localStorage.setItem(PINNED_GENRES_KEY, JSON.stringify(next));
+    setPinnedGenres(next);
+  }, []);
 
   const processCallback = useCallback(
     (search: string) => {
@@ -122,9 +170,15 @@ export function useMeloraApp() {
         .then((fn) => { unlisten = fn; });
     });
 
-    import(/* @vite-ignore */ "@tauri-apps/plugin-deep-link").then(({ onOpenUrl }) => {
+    import(/* @vite-ignore */ "@tauri-apps/plugin-deep-link").then(({ onOpenUrl, getCurrent }) => {
       onOpenUrl((urls) => { for (const u of urls) handleDeepLink(u); })
         .then((fn) => { unlistenMobile = fn; });
+      // Cold start: if Android launched the activity straight from the
+      // melora://callback intent, onOpenUrl (registered just now) misses the
+      // initial URL — getCurrent() returns it instead.
+      getCurrent().then((urls) => {
+        if (urls) for (const u of urls) handleDeepLink(u);
+      }).catch(() => {});
     }).catch(() => {
       // plugin not available — desktop path covers it
     });
@@ -135,6 +189,13 @@ export function useMeloraApp() {
   useEffect(() => {
     if (authed) void refreshSession();
   }, [authed, cadence, refreshSession]);
+
+  // Auto-dismiss the "playlist created" toast after a few seconds.
+  useEffect(() => {
+    if (!playlistUrl) return;
+    const t = setTimeout(() => setPlaylistUrl(null), 5000);
+    return () => clearTimeout(t);
+  }, [playlistUrl]);
 
   // BPM enrichment via ReccoBeats: the session renders immediately, then one
   // batch lookup fills in the badges (cached per track in localStorage).
@@ -165,6 +226,67 @@ export function useMeloraApp() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
+
+  const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
+
+  // When a session loads, ask Spotify which of its tracks are already in the
+  // user's Liked Songs so the hearts render in the right state.
+  useEffect(() => {
+    if (!session || session.tracks.length === 0) return;
+    const ids = session.tracks.map((e) => e.track.id);
+    let cancelled = false;
+    void client
+      .checkSavedTracks(ids)
+      .then((flags) => {
+        if (cancelled) return;
+        const arr = Array.isArray(flags)
+          ? flags
+          : ((flags as { found?: boolean[]; contains?: boolean[] })?.found ??
+            (flags as { contains?: boolean[] })?.contains ??
+            []);
+        setLikedTrackIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id, i) => {
+            if (arr[i]) next.add(id);
+            else next.delete(id);
+          });
+          return next;
+        });
+      })
+      .catch(() => {
+        // best-effort; hearts just start empty
+      });
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+  // Toggle a track in/out of Liked Songs. Optimistic — flip the heart now,
+  // roll back if the request fails.
+  const toggleLike = useCallback(
+    async (trackId: string) => {
+      const wasLiked = likedTrackIds.has(trackId);
+      setLikedTrackIds((prev) => {
+        const next = new Set(prev);
+        if (wasLiked) next.delete(trackId);
+        else next.add(trackId);
+        return next;
+      });
+      try {
+        if (wasLiked) await client.removeTracks([trackId]);
+        else await client.saveTracks([trackId]);
+      } catch (err) {
+        setLikedTrackIds((prev) => {
+          const next = new Set(prev);
+          if (wasLiked) next.add(trackId);
+          else next.delete(trackId);
+          return next;
+        });
+        setError(err instanceof Error ? err.message : "Couldn't update Liked Songs");
+      }
+    },
+    [client, likedTrackIds],
+  );
 
   const createPlaylist = useCallback(async () => {
     if (!session) return;
@@ -200,6 +322,11 @@ export function useMeloraApp() {
     vibes: DEFAULT_VIBES,
     sortOptions: SORT_OPTIONS,
     playlistUrl,
+    likedTrackIds,
+    toggleLike,
+    pinnedGenres,
+    addPinnedGenre,
+    removePinnedGenre,
     login: () => { void startSpotifyLogin(); },
     logout: () => {
       logout();

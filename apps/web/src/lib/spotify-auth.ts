@@ -23,6 +23,25 @@ const TOKEN_KEY = "melora:spotify:tokens";
 const STATE_KEY = "melora:spotify:oauth_state";
 const VERIFIER_KEY = "melora:spotify:pkce_verifier";
 
+// PKCE state/verifier MUST survive the round-trip through the external
+// browser. On Android the app is backgrounded while the system browser
+// handles Spotify+Google auth; when the melora://callback deep link returns,
+// the WebView may have been recreated and sessionStorage wiped — which made
+// login silently fail and leave the user on the landing page. localStorage
+// persists across that, so we use it for the short-lived OAuth handshake
+// values (cleared as soon as the callback is processed).
+const authStore = {
+  get(key: string): string | null {
+    return localStorage.getItem(key);
+  },
+  set(key: string, value: string): void {
+    localStorage.setItem(key, value);
+  },
+  remove(key: string): void {
+    localStorage.removeItem(key);
+  },
+};
+
 function getConfig() {
   const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
 
@@ -97,8 +116,8 @@ export async function startSpotifyLogin(): Promise<void> {
   const state = crypto.randomUUID();
   const verifier = generateCodeVerifier();
 
-  sessionStorage.setItem(STATE_KEY, state);
-  sessionStorage.setItem(VERIFIER_KEY, verifier);
+  authStore.set(STATE_KEY, state);
+  authStore.set(VERIFIER_KEY, verifier);
 
   const challenge = await generateCodeChallenge(verifier);
   const authUrl = buildPkceAuthUrl(config, state, challenge);
@@ -141,8 +160,8 @@ export async function handleSpotifyCallback(search: string): Promise<boolean> {
   const parsed = parseAuthCallback(search);
   if (!parsed) return false;
 
-  const expectedState = sessionStorage.getItem(STATE_KEY);
-  const verifier = sessionStorage.getItem(VERIFIER_KEY);
+  const expectedState = authStore.get(STATE_KEY);
+  const verifier = authStore.get(VERIFIER_KEY);
 
   if (!expectedState || expectedState !== parsed.state) {
     throw new Error("OAuth state mismatch. Please try logging in again.");
@@ -151,8 +170,8 @@ export async function handleSpotifyCallback(search: string): Promise<boolean> {
     throw new Error("Missing PKCE verifier. Please try logging in again.");
   }
 
-  sessionStorage.removeItem(STATE_KEY);
-  sessionStorage.removeItem(VERIFIER_KEY);
+  authStore.remove(STATE_KEY);
+  authStore.remove(VERIFIER_KEY);
 
   const tokens = await exchangeCodeForTokens(parsed.code, verifier);
   saveStoredTokens(tokens);

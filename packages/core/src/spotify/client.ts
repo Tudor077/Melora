@@ -83,7 +83,11 @@ export class SpotifyClient {
       return undefined as T;
     }
 
-    return response.json() as Promise<T>;
+    // Some endpoints (e.g. PUT /me/library) return 200 with an empty body —
+    // response.json() would throw "Unexpected end of JSON input" on that.
+    const text = await response.text();
+    if (!text) return undefined as T;
+    return JSON.parse(text) as T;
   }
 
   getCurrentUser(): Promise<SpotifyUser> {
@@ -100,6 +104,34 @@ export class SpotifyClient {
     return this.request<{ items: Array<{ track: SpotifyTrack }> }>(
       `/me/tracks?limit=${limit}&offset=${offset}`,
     );
+  }
+
+  // Add track(s) to the user's Liked Songs (requires user-library-modify).
+  // Feb 2026: per-type PUT /me/tracks is gone in dev mode (403) — replaced by
+  // the generic PUT /me/library which takes Spotify URIs.
+  saveTracks(ids: string[]) {
+    if (ids.length === 0) return Promise.resolve();
+    const uris = ids.slice(0, 50).map((id) => `spotify:track:${id}`);
+    // Feb 2026 dev-mode endpoints take params in the query string, not body.
+    const params = new URLSearchParams({ uris: uris.join(",") });
+    return this.request<void>(`/me/library?${params.toString()}`, { method: "PUT" });
+  }
+
+  // Remove track(s) from Liked Songs. Feb 2026: DELETE /me/library with uris.
+  removeTracks(ids: string[]) {
+    if (ids.length === 0) return Promise.resolve();
+    const uris = ids.slice(0, 50).map((id) => `spotify:track:${id}`);
+    const params = new URLSearchParams({ uris: uris.join(",") });
+    return this.request<void>(`/me/library?${params.toString()}`, { method: "DELETE" });
+  }
+
+  // Check which of the given tracks are already in the library.
+  // Feb 2026: GET /me/library/contains?uris=... → array of booleans (in order).
+  checkSavedTracks(ids: string[]) {
+    if (ids.length === 0) return Promise.resolve([] as boolean[]);
+    const uris = ids.slice(0, 50).map((id) => `spotify:track:${id}`);
+    const params = new URLSearchParams({ uris: uris.join(",") });
+    return this.request<boolean[]>(`/me/library/contains?${params.toString()}`);
   }
 
   getRecommendations(options: RecommendationSeedOptions) {

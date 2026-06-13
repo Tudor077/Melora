@@ -179,6 +179,18 @@ function togglePlay() {
   runOrQueue(() => controller?.togglePlay());
 }
 
+/**
+ * Stop playback entirely and clear the active track. Used on refresh so a
+ * track from the previous session doesn't keep playing (headless) while a
+ * brand-new set of cards is on screen.
+ */
+function stopPlayback() {
+  currentTrackId = null;
+  commandQueue = [];
+  controller?.pause();
+  emit({ trackId: null, isPaused: true, isBuffering: false, position: 0, duration: 0 });
+}
+
 // ── React hook: subscribe to the singleton ─────────────────────────────────
 
 export function useSpotifyEmbed() {
@@ -192,5 +204,7 @@ export function useSpotifyEmbed() {
     };
   }, []);
 
-  return { playback, playTrack, togglePlay };
+  return { playback, playTrack, togglePlay, stopPlayback };
 }
+
+export { stopPlayback };

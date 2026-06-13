@@ -20,6 +20,12 @@ export interface GenerateDiscoveryOptions {
   limit?: number;
   vibes?: VibeProfile[];
   bpmFallback?: BpmFallbackFn;
+  /**
+   * Genres injected by the caller (MusicBrainz artist tags, user-pinned
+   * genres). Needed because Spotify leaves `genres` empty on niche artists,
+   * which silently collapses discovery to mainstream genres.
+   */
+  extraGenres?: string[];
 }
 
 function cadenceToMs(cadence: DiscoveryCadence): number {
@@ -129,7 +135,11 @@ async function enrichTracks(
   return enriched;
 }
 
-async function collectDiscoveryTracks(client: SpotifyClient, limit: number): Promise<SpotifyTrack[]> {
+async function collectDiscoveryTracks(
+  client: SpotifyClient,
+  limit: number,
+  extraGenres: string[] = [],
+): Promise<SpotifyTrack[]> {
   const [topArtistsResult, topTracksResult] = await Promise.allSettled([
     client.getTopArtists(20, "medium_term"),
     client.getTopTracks(50, "medium_term"),
@@ -151,11 +161,17 @@ async function collectDiscoveryTracks(client: SpotifyClient, limit: number): Pro
     }
   };
 
-  // Extract user's genres; fall back to broad genres if none found
-  const genres = shuffle([...new Set(topArtists.flatMap((a) => a.genres ?? []))]);
-  const searchGenres = genres.length > 0
-    ? genres.slice(0, 4)
-    : ["pop", "hip hop", "electronic", "rock"];
+  // Genre pool: caller-supplied genres (MusicBrainz tags, user-pinned) get
+  // priority slots; Spotify artist genres fill the rest. Spotify's own tags
+  // are empty for niche artists, so extras carry most of the signal.
+  const spotifyGenres = [...new Set(topArtists.flatMap((a) => a.genres ?? []))];
+  const prioritized = shuffle([...new Set(extraGenres)]).slice(0, 5);
+  const searchGenres = [
+    ...new Set([...prioritized, ...shuffle(spotifyGenres)]),
+  ].slice(0, 8);
+  if (searchGenres.length === 0) {
+    searchGenres.push("pop", "hip hop", "electronic", "rock");
+  }
 
   // Dev-mode apps cap /search at limit=10 (Feb 2026), so we run many small
   // queries instead of a few big ones.
@@ -170,14 +186,14 @@ async function collectDiscoveryTracks(client: SpotifyClient, limit: number): Pro
     if (r.status === "fulfilled") absorb(r.value.tracks.items);
   }
 
-  // Wave 2: genre as free text + year filter, two pages each
+  // Wave 2: genre as free text + year filter; second page only for the
+  // first few genres to keep the request count sane (limit is capped at 10)
   const years = ["2025", "2024", "2023"];
   const genreQueries = searchGenres.flatMap((g, i) => {
     const year = years[i % years.length];
-    return [
-      { q: `${g} year:${year}`, offset: 0 },
-      { q: `${g} year:${year}`, offset: 10 },
-    ];
+    const queries = [{ q: `${g} year:${year}`, offset: 0 }];
+    if (i < 4) queries.push({ q: `${g} year:${year}`, offset: 10 });
+    return queries;
   });
   const genreResults = await Promise.allSettled(
     genreQueries.map(({ q, offset }) => client.searchTracks(q, 10, offset)),
@@ -212,11 +228,11 @@ export async function generateDiscoverySession(
   client: SpotifyClient,
   options: GenerateDiscoveryOptions,
 ): Promise<DiscoverySession> {
-  const { cadence, sort, filters, limit = 20, vibes = DEFAULT_VIBES, bpmFallback } = options;
+  const { cadence, sort, filters, limit = 20, vibes = DEFAULT_VIBES, bpmFallback, extraGenres } = options;
   // /recommendations is unavailable for development mode apps (Feb 2026) —
   // go straight to search-based discovery instead of a guaranteed-404 attempt.
   const seedTrackIds: string[] = [];
-  const tracks = await collectDiscoveryTracks(client, limit);
+  const tracks = await collectDiscoveryTracks(client, limit, extraGenres ?? []);
 
   let enriched = await enrichTracks(client, tracks, vibes, bpmFallback);
 
