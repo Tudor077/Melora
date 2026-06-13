@@ -51,7 +51,16 @@
       "Bash(grep -iE \"\\\\.\\(png|jpg|jpeg|ico\\)$\")",
       "Bash(grep -c \"Finished 1 APK\" \"C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Projects-Melora/6ed51a28-6b18-4a5b-b095-1933efcdb6ea/tasks/b2fbv7b4y.output\")",
       "Bash(git add *)",
-      "Bash(git commit -m '@ *)"
+      "Bash(git commit -m '@ *)",
+      "Bash(node -e \"console.log\\(require\\('./apps/desktop/src-tauri/tauri.conf.json'\\).version\\)\")",
+      "Bash(mkdir -p releases/v0.3.0)",
+      "Bash(cp \"apps/desktop/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk\" \"releases/v0.3.0/Melora-0.3.0.apk\")",
+      "Bash(cp \"apps/desktop/src-tauri/target/release/bundle/nsis/Melora_0.3.0_x64-setup.exe\" \"releases/v0.3.0/Melora-0.3.0-Setup.exe\")",
+      "Bash(cp \"apps/desktop/src-tauri/target/release/bundle/msi/Melora_0.3.0_x64_en-US.msi\" \"releases/v0.3.0/Melora-0.3.0_x64.msi\")",
+      "Bash(awk 'NR>1{printf \"%-30s %8.1f MB\\\\n\", $9, $5/1048576}')",
+      "Bash(cp \"Melora-0.3.0.apk\" \"Melora.apk\")",
+      "Bash(cp \"Melora-0.3.0-Setup.exe\" \"Melora-Setup.exe\")",
+      "Bash(awk 'NR>1 && $9!=\".\" && $9!=\"..\"{printf \"%-26s %6.1f MB\\\\n\", $9, $5/1048576}')"
     ]
   }
 }
