@@ -10,6 +10,7 @@ build/
 !.env.production
 .DS_Store
 Thumbs.db
+.claude/
 *.log
 target/
 src-tauri/target/

@@ -1,8 +1,10 @@
 # Melora
 
-Discover new songs **hourly** or **daily** based on what you already love on Spotify. Sort and filter picks by **BPM**, **genre**, **vibe**, energy, mood, popularity, and release date — then export to a fresh Spotify playlist.
+### ⬇️ [Download Melora](https://tudor077.github.io/Melora/download.html) for Windows & Android
 
-On your phone, every track is full-screen — **swipe** to the next one and it plays automatically. Tap the **heart** to save it to your Liked Songs.
+Discover new songs **hourly** or **daily** based on what you already love on Spotify. Sort and filter picks by **BPM**, **genre**, **vibe**, energy, mood, popularity, and release date, then export to a fresh Spotify playlist.
+
+On your phone, every track is full-screen. **Swipe** to the next one and it plays automatically. Tap the **heart** to save it to your Liked Songs.
 
 ---
 
@@ -10,12 +12,12 @@ On your phone, every track is full-screen — **swipe** to the next one and it p
 
 Grab the latest build from the [download page](download.html) or the releases folder:
 
-- **Windows** — `releases/v0.3.0/Melora-Setup.exe` (or the `.msi`). SmartScreen may warn for a new publisher → **More info → Run anyway**.
-- **Android** — `releases/v0.3.0/Melora.apk`. Allow installs from your browser when prompted.
+- **Windows**: `releases/v0.3.0/Melora-Setup.exe` (or the `.msi`). SmartScreen may warn for a new publisher, so pick **More info, Run anyway**.
+- **Android**: `releases/v0.3.0/Melora.apk`. Allow installs from your browser when prompted.
 
 ### First run: connect your own Spotify app
 
-Melora runs on **your own free Spotify app**, so there are no account limits and nothing to wait for. The app walks you through it on first launch — it takes ~2 minutes, once:
+Melora runs on **your own free Spotify app**, so there are no account limits and nothing to wait for. The app walks you through it on first launch, and it takes about 2 minutes, once:
 
 1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and click **Create app**.
 2. Give it any name. Add this **Redirect URI** exactly:
@@ -27,9 +29,9 @@ Melora runs on **your own free Spotify app**, so there are no account limits and
    and tick **Web API**, then save.
 3. Open the app's **Settings**, copy its **Client ID**, and paste it into Melora's setup screen.
 
-That's it — you're the owner of your own Spotify app, so you're authorised automatically. (You can change the Client ID later from the login screen.)
+That's it. You're the owner of your own Spotify app, so you're authorised automatically. (You can change the Client ID later from the login screen.)
 
-> **Why?** Spotify apps start in *Development Mode*, where only up to 25 manually-added users can use a given app. Letting each person run their own app sidesteps that entirely — no allowlist, no Spotify approval needed.
+> **Why?** Spotify apps start in *Development Mode*, where only up to 25 manually-added users can use a given app. Letting each person run their own app sidesteps that entirely, with no allowlist and no Spotify approval needed.
 
 ---
 
@@ -45,7 +47,7 @@ Melora/
 
 ## Spotify Developer setup (start here)
 
-You said you don't have credentials yet — here's the full flow:
+Here's the full flow:
 
 ### 1. Create a Spotify Developer app
 
@@ -106,12 +108,12 @@ VITE_SPOTIFY_REDIRECT_URI=http://127.0.0.1:5174/callback
 
 ## How discovery works
 
-1. **Seeds** — Melora reads your top tracks and saved/liked songs
-2. **Recommendations** — Spotify's `/recommendations` endpoint finds similar tracks
-3. **Enrichment** — Each track gets audio features (BPM/tempo, energy, valence, danceability) and artist genres
-4. **Vibes** — Tracks are labeled with vibes like Chill, Hype, Focus, Happy, etc.
-5. **Cadence** — Results are cached per hour or per day so you get a fresh batch on schedule
-6. **Playlist export** — One click creates a new private Spotify playlist from the current batch
+1. **Seeds**: Melora reads your top tracks and saved/liked songs
+2. **Recommendations**: Spotify's `/recommendations` endpoint finds similar tracks
+3. **Enrichment**: Each track gets audio features (BPM/tempo, energy, valence, danceability) and artist genres
+4. **Vibes**: Tracks are labeled with vibes like Chill, Hype, Focus, Happy, etc.
+5. **Cadence**: Results are cached per hour or per day so you get a fresh batch on schedule
+6. **Playlist export**: One click creates a new private Spotify playlist from the current batch
 
 ## Sorting & filters
 
