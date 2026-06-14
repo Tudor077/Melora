@@ -209,14 +209,14 @@
     </p>
 
     <div class="downloads">
-      <a class="btn btn-win" id="btn-win" href="releases/v0.3.0/Melora.exe" download>
+      <a class="btn btn-win" id="btn-win" href="releases/latest/Melora.exe" download>
         <span class="ico">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
         </span>
         <span class="txt"><b>Download for Windows</b><small>x64 · just run it, no install (.exe)</small></span>
       </a>
 
-      <a class="btn btn-and" id="btn-and" href="releases/v0.3.0/Melora-0.3.0.apk" download>
+      <a class="btn btn-and" id="btn-and" href="releases/latest/Melora.apk" download>
         <span class="ico">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24a11.46 11.46 0 0 0-8.94 0L5.65 5.67c-.19-.29-.57-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5"/></svg>
         </span>
@@ -225,8 +225,8 @@
     </div>
 
     <div class="dl-meta">
-      <span class="ver-badge"><span class="dot"></span>Latest · v0.3.0</span>
-      <span>Released 13 Jun 2026</span>
+      <span class="ver-badge"><span class="dot"></span>Latest · v<span id="ver">0.3.0</span></span>
+      <span id="reldate">Released 13 Jun 2026</span>
     </div>
     <div class="spotify-note">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0m5.52 17.34c-.24.36-.66.48-1.02.24-2.82-1.74-6.36-2.1-10.56-1.14-.42.12-.78-.18-.9-.54-.12-.42.18-.78.54-.9 4.56-1.02 8.52-.6 11.64 1.32.42.18.48.66.3 1.02m1.44-3.3c-.3.42-.84.6-1.26.3-3.24-1.98-8.16-2.58-11.94-1.38-.48.12-1.02-.12-1.14-.6-.12-.48.12-1.02.6-1.14 4.38-1.32 9.78-.66 13.5 1.62.36.18.54.78.24 1.2m.12-3.36C15.24 8.4 8.82 8.16 5.1 9.3c-.6.18-1.2-.18-1.38-.72-.18-.6.18-1.2.72-1.38 4.32-1.32 11.4-1.02 15.9 1.62.54.3.72 1.02.42 1.56-.3.42-1.02.6-1.56.3"/></svg>
@@ -286,7 +286,7 @@
 </div>
 
 <footer>
-  <span>Melora v0.3.0</span>
+  <span>Melora v<span id="ver2">0.3.0</span></span>
   <span>Built with <a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a> &amp; <a href="https://react.dev" target="_blank" rel="noopener">React</a> · Powered by Spotify</span>
 </footer>
 
@@ -299,6 +299,23 @@
     if (isAndroid) document.getElementById("btn-and").classList.add("highlight");
     else if (isWindows) document.getElementById("btn-win").classList.add("highlight");
   })();
+
+  // Version + date come from releases/latest/version.json, so a new release
+  // only needs the files in releases/latest/ swapped — never this page.
+  fetch("releases/latest/version.json", { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (v) {
+      if (v.version) {
+        document.getElementById("ver").textContent = v.version;
+        document.getElementById("ver2").textContent = v.version;
+      }
+      if (v.date) {
+        var d = new Date(v.date);
+        document.getElementById("reldate").textContent =
+          "Released " + d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      }
+    })
+    .catch(function () { /* keep the static fallback text */ });
 </script>
 </body>
 </html>

@@ -12,8 +12,8 @@ On your phone, every track is full-screen. **Swipe** to the next one and it play
 
 Grab the latest build from the [download page](download.html) or the releases folder:
 
-- **Windows**: `releases/v0.3.0/Melora.exe`. Just run it, no install needed. SmartScreen may warn for a new publisher, so pick **More info, Run anyway**.
-- **Android**: `releases/v0.3.0/Melora.apk`. Allow installs from your browser when prompted.
+- **Windows**: `releases/latest/Melora.exe`. Just run it, no install needed. SmartScreen may warn for a new publisher, so pick **More info, Run anyway**.
+- **Android**: `releases/latest/Melora.apk`. Allow installs from your browser when prompted.
 
 ### First run: connect your own Spotify app
 
