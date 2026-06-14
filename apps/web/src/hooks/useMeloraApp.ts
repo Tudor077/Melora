@@ -19,6 +19,18 @@ import { lookupArtistGenres } from "../lib/artist-genres";
 import { stopPlayback } from "./useSpotifyEmbed";
 
 const PINNED_GENRES_KEY = "melora:pinned-genres:v1";
+const REFRESH_TIMES_KEY = "melora:refresh-times:v1";
+const MAX_REFRESH_PER_HOUR = 5;
+const HOUR_MS = 60 * 60 * 1000;
+
+function loadRefreshTimes(): number[] {
+  try {
+    const all = JSON.parse(localStorage.getItem(REFRESH_TIMES_KEY) ?? "[]") as number[];
+    return all.filter((t) => Date.now() - t < HOUR_MS);
+  } catch {
+    return [];
+  }
+}
 
 function loadPinnedGenres(): string[] {
   try {
@@ -305,6 +317,24 @@ export function useMeloraApp() {
     [client, likedTrackIds],
   );
 
+  // Manual refresh is capped at 5 per rolling hour.
+  const [refreshTimes, setRefreshTimes] = useState<number[]>(loadRefreshTimes);
+  const recentRefreshes = refreshTimes.filter((t) => Date.now() - t < HOUR_MS);
+  const refreshesLeft = Math.max(0, MAX_REFRESH_PER_HOUR - recentRefreshes.length);
+  const manualRefresh = useCallback(() => {
+    const now = Date.now();
+    const recent = loadRefreshTimes();
+    if (recent.length >= MAX_REFRESH_PER_HOUR) {
+      const waitMin = Math.max(1, Math.ceil((HOUR_MS - (now - recent[0])) / 60000));
+      setError(`Refresh limit reached (${MAX_REFRESH_PER_HOUR}/hour). Try again in ${waitMin}m.`);
+      return;
+    }
+    const next = [...recent, now];
+    localStorage.setItem(REFRESH_TIMES_KEY, JSON.stringify(next));
+    setRefreshTimes(next);
+    void refreshSession(true);
+  }, [refreshSession]);
+
   const createPlaylist = useCallback(async () => {
     if (!session) return;
     setLoading(true);
@@ -353,7 +383,8 @@ export function useMeloraApp() {
       setAuthed(false);
       setSession(null);
     },
-    refreshSession: () => refreshSession(true),
+    refreshSession: manualRefresh,
+    refreshesLeft,
     createPlaylist,
   };
 }

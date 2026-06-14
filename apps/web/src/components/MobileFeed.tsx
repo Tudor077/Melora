@@ -146,10 +146,13 @@ export function MobileFeed({ app, embed, tracks }: MobileFeedProps) {
                   {art && <img className="mobile-cover" src={art} alt={track.album.name} />}
                   <div className="mobile-meta">
                     <h2 className="mobile-title">{track.name}</h2>
-                    <p className="mobile-artist">
-                      {track.artists.map((a) => a.name).join(", ")}
-                      {entry.bpm != null && <span className="track-bpm-inline">  {entry.bpm} bpm</span>}
-                    </p>
+                    <p className="mobile-artist">{track.artists.map((a) => a.name).join(", ")}</p>
+                    {entry.bpm != null && (
+                      <div className="mobile-bpm">
+                        <span className="mobile-bpm-num">{entry.bpm}</span>
+                        <span className="mobile-bpm-label">BPM</span>
+                      </div>
+                    )}
                   </div>
                   <div className="mobile-controls">
                     <button

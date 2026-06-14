@@ -139,14 +139,14 @@ export interface RecommendationSeedOptions {
   maxTempo?: number;
 }
 
+// Only the scopes Melora actually uses, to keep the consent screen minimal:
+// top artists/tracks (discovery), library read+modify (Liked Songs), and
+// creating private playlists. Dropped: user-read-private, user-read-email,
+// playlist-read-private, playlist-modify-public (unused).
 export const SPOTIFY_SCOPES = [
-  "user-read-private",
-  "user-read-email",
   "user-top-read",
   "user-library-read",
   "user-library-modify",
-  "playlist-read-private",
-  "playlist-modify-public",
   "playlist-modify-private",
 ] as const;
 

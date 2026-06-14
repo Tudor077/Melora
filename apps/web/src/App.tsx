@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMeloraApp } from "./hooks/useMeloraApp";
 import { useSpotifyEmbed } from "./hooks/useSpotifyEmbed";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -7,13 +7,15 @@ import { MobileFeed } from "./components/MobileFeed";
 import { SpotifySetup } from "./components/SpotifySetup";
 import { CadenceToggle } from "./components/CadenceToggle";
 
-function formatExpiry(iso: string): string {
-  const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return "expired";
+function formatExpiry(iso: string, now: number): string {
+  const diff = new Date(iso).getTime() - now;
+  if (diff <= 0) return "now";
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (hours > 0) return `${hours}h ${pad(minutes)}m`;
+  return `${minutes}:${pad(seconds)}`;
 }
 
 type BpmBand = "all" | "slow" | "mid" | "fast";
@@ -39,8 +41,30 @@ export default function App() {
   const { playback, playTrack, togglePlay } = embed;
   const isMobile = useIsMobile();
   const [bpmBand, setBpmBand] = useState<BpmBand>("all");
+  const [query, setQuery] = useState("");
+  const [now, setNow] = useState(Date.now());
 
-  const shownTracks = app.visibleTracks.filter((entry) => inBand(entry.bpm, bpmBand));
+  // Live clock for the countdown + kill the browser right-click context menu
+  // (this is a native-feeling app, not a web page).
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    const noCtx = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", noCtx);
+    return () => {
+      clearInterval(tick);
+      document.removeEventListener("contextmenu", noCtx);
+    };
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const shownTracks = app.visibleTracks
+    .filter((entry) => inBand(entry.bpm, bpmBand))
+    .filter(
+      (entry) =>
+        !q ||
+        entry.track.name.toLowerCase().includes(q) ||
+        entry.track.artists.some((a) => a.name.toLowerCase().includes(q)),
+    );
 
   if (!app.clientId) {
     return <SpotifySetup onSave={app.saveClientId} />;
@@ -84,13 +108,18 @@ export default function App() {
           <h1>{app.cadence === "hourly" ? "This hour's picks" : "Today's picks"}</h1>
           {app.session && (
             <p className="meta">
-              Refreshes in {formatExpiry(app.session.expiresAt)} • artists similar to your taste
+              Refreshes in {formatExpiry(app.session.expiresAt, now)} • artists similar to your taste
             </p>
           )}
         </div>
         <div className="topbar-actions">
-          <button className="ghost" onClick={() => app.refreshSession()} disabled={app.loading}>
-            Refresh now
+          <button
+            className="ghost"
+            onClick={() => app.refreshSession()}
+            disabled={app.loading || app.refreshesLeft === 0}
+            title={`${app.refreshesLeft} of 5 refreshes left this hour`}
+          >
+            Refresh now{app.refreshesLeft < 5 ? ` (${app.refreshesLeft})` : ""}
           </button>
           <button className="ghost" onClick={app.createPlaylist} disabled={app.loading || !app.session}>
             Save as playlist
@@ -115,32 +144,22 @@ export default function App() {
         ))}
       </div>
 
-      <div className="chip-row genre-pins">
-        <span className="label genre-pins-label">Your genres:</span>
-        {app.pinnedGenres.map((genre) => (
-          <button
-            key={genre}
-            className="chip active"
-            title="Remove"
-            onClick={() => app.removePinnedGenre(genre)}
-          >
-            {genre} ✕
-          </button>
-        ))}
-        <form
-          className="genre-pin-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const input = e.currentTarget.elements.namedItem("genre") as HTMLInputElement;
-            if (input.value.trim()) {
-              app.addPinnedGenre(input.value);
-              input.value = "";
-              app.refreshSession();
-            }
-          }}
-        >
-          <input name="genre" className="genre-pin-input" placeholder="+ add genre (e.g. breakcore)" autoComplete="off" />
-        </form>
+      <div className="search-row">
+        <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+        </svg>
+        <input
+          className="search-input"
+          type="search"
+          placeholder="Search these picks by song or artist…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoComplete="off"
+        />
+        {query && (
+          <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}>✕</button>
+        )}
       </div>
 
       {app.error && <p className="error banner">{app.error}</p>}
@@ -168,6 +187,8 @@ export default function App() {
                   ? playback.position / playback.duration
                   : 0
               }
+              isLiked={app.likedTrackIds.has(entry.track.id)}
+              onToggleLike={() => app.toggleLike(entry.track.id)}
               onClick={() => {
                 if (playback.trackId === entry.track.id) {
                   togglePlay();
@@ -181,7 +202,9 @@ export default function App() {
             <p className="empty">
               {app.visibleTracks.length === 0
                 ? "No tracks found. Try refreshing to discover new music."
-                : "No tracks in this BPM range (some are still loading their BPM)."}
+                : q
+                  ? `No picks match "${query}".`
+                  : "No tracks in this BPM range (some are still loading their BPM)."}
             </p>
           )}
         </section>

@@ -7,10 +7,12 @@ interface TrackCardProps {
   isPlaying: boolean;
   /** 0..1 playback progress, only meaningful when active */
   progress: number;
+  isLiked: boolean;
+  onToggleLike: () => void;
   onClick: () => void;
 }
 
-export function TrackCard({ entry, isActive, isPlaying, progress, onClick }: TrackCardProps) {
+export function TrackCard({ entry, isActive, isPlaying, progress, isLiked, onToggleLike, onClick }: TrackCardProps) {
   const { track } = entry;
   const albumArt = track.album.images?.[0]?.url;
   const artists = track.artists.map((a) => a.name).join(", ");
@@ -19,6 +21,15 @@ export function TrackCard({ entry, isActive, isPlaying, progress, onClick }: Tra
     <article className={`track-card ${isActive ? "active" : ""}`} onClick={onClick}>
       <div className="track-banner">
         {albumArt && <img src={albumArt} alt={track.album.name} className="track-art" />}
+        <button
+          className={`card-like ${isLiked ? "liked" : ""}`}
+          aria-label={isLiked ? "Remove from Liked Songs" : "Add to Liked Songs"}
+          onClick={(e) => { e.stopPropagation(); onToggleLike(); }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={isLiked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <div className="track-play-overlay">
           <div className="track-play-icon">
             {isPlaying ? (

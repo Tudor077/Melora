@@ -21,6 +21,25 @@
   /* kill the grey/blue tap-highlight rectangle WebView draws on tappable
      elements (the "hit-box" flash) */
   -webkit-tap-highlight-color: transparent;
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-2) transparent;
+}
+
+/* Slim, themed scrollbar instead of the default chunky grey one */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--panel-2);
+  border-radius: 99px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a3650;
 }
 
 button {
@@ -237,6 +256,7 @@ h1 {
 
 .cadence-toggle {
   display: inline-flex;
+  gap: 0.3rem;
   padding: 0.25rem;
   border-radius: 999px;
   background: var(--panel);
@@ -316,10 +336,89 @@ input[type="number"] {
   border-color: rgba(30, 215, 96, 0.35);
 }
 
+/* ── SEARCH ── */
+.search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+.search-icon {
+  position: absolute;
+  left: 0.9rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 2.4rem;
+  font-size: 0.95rem;
+}
+.search-input::placeholder {
+  color: var(--muted);
+}
+.search-input:focus {
+  outline: none;
+  border-color: rgba(30, 215, 96, 0.4);
+}
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+.search-clear {
+  position: absolute;
+  right: 0.6rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.search-clear:hover {
+  color: var(--text);
+  background: var(--panel);
+}
+
 .track-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
+}
+
+/* ── CARD LIKE (heart) ── */
+.card-like {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 120ms ease;
+  backdrop-filter: blur(4px);
+}
+.track-card:hover .card-like,
+.card-like.liked {
+  opacity: 1;
+}
+.card-like.liked {
+  color: var(--accent);
+}
+.card-like:hover {
+  transform: scale(1.12);
 }
 
 /* ── TRACK CARD ── */
@@ -841,6 +940,30 @@ input[type="number"] {
   margin: 0;
   color: rgba(255, 255, 255, 0.75);
   font-size: 0.95rem;
+}
+
+.mobile-bpm {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+  padding: 0.35rem 0.95rem;
+  border-radius: 99px;
+  background: rgba(30, 215, 96, 0.12);
+  border: 1px solid rgba(30, 215, 96, 0.3);
+}
+.mobile-bpm-num {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+.mobile-bpm-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  opacity: 0.85;
 }
 
 .mobile-controls {
