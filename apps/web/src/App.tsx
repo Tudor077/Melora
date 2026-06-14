@@ -56,15 +56,18 @@ export default function App() {
     };
   }, []);
 
-  const q = query.trim().toLowerCase();
-  const shownTracks = app.visibleTracks
-    .filter((entry) => inBand(entry.bpm, bpmBand))
-    .filter(
-      (entry) =>
-        !q ||
-        entry.track.name.toLowerCase().includes(q) ||
-        entry.track.artists.some((a) => a.name.toLowerCase().includes(q)),
-    );
+  const isSearching = query.trim().length > 0;
+  const shownTracks = app.visibleTracks.filter((entry) => inBand(entry.bpm, bpmBand));
+  // Desktop grid shows live Spotify search results while a query is typed,
+  // otherwise the discovery picks. Mobile always uses discovery picks.
+  const desktopTracks = isSearching ? (app.searchResults ?? []) : shownTracks;
+
+  // Debounce the query into a real Spotify search.
+  const runSearch = app.runSearch;
+  useEffect(() => {
+    const id = setTimeout(() => runSearch(query), 400);
+    return () => clearTimeout(id);
+  }, [query, runSearch]);
 
   if (!app.clientId) {
     return <SpotifySetup onSave={app.saveClientId} />;
@@ -152,11 +155,12 @@ export default function App() {
         <input
           className="search-input"
           type="search"
-          placeholder="Search these picks by song or artist…"
+          placeholder="Search Spotify by song, artist or genre…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoComplete="off"
         />
+        {app.searching && <span className="search-spinner spin" aria-hidden="true" />}
         {query && (
           <button className="search-clear" aria-label="Clear search" onClick={() => setQuery("")}>✕</button>
         )}
@@ -172,11 +176,13 @@ export default function App() {
         </p>
       )}
 
-      {app.loading && !app.session ? (
+      {!isSearching && app.loading && !app.session ? (
         <div className="loading">Finding songs you'll love…</div>
+      ) : isSearching && app.searching && desktopTracks.length === 0 ? (
+        <div className="loading">Searching Spotify…</div>
       ) : (
         <section className="track-grid">
-          {shownTracks.map((entry) => (
+          {desktopTracks.map((entry) => (
             <TrackCard
               key={entry.track.id}
               entry={entry}
@@ -198,12 +204,12 @@ export default function App() {
               }}
             />
           ))}
-          {!app.loading && shownTracks.length === 0 && (
+          {desktopTracks.length === 0 && !app.searching && !app.loading && (
             <p className="empty">
-              {app.visibleTracks.length === 0
-                ? "No tracks found. Try refreshing to discover new music."
-                : q
-                  ? `No picks match "${query}".`
+              {isSearching
+                ? `No results for "${query.trim()}".`
+                : app.visibleTracks.length === 0
+                  ? "No tracks found. Try refreshing to discover new music."
                   : "No tracks in this BPM range (some are still loading their BPM)."}
             </p>
           )}

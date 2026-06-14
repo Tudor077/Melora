@@ -11,6 +11,7 @@ import {
   type DiscoveryCadence,
   type DiscoveryFilters,
   type DiscoverySession,
+  type EnrichedTrack,
   type SortField,
   type SortOption,
 } from "@melora/core";
@@ -335,6 +336,52 @@ export function useMeloraApp() {
     void refreshSession(true);
   }, [refreshSession]);
 
+  // Real Spotify search (not just filtering the current page). Free-text, so
+  // a song title, an artist, or a genre word ("techno", "lofi") all work.
+  const [searchResults, setSearchResults] = useState<EnrichedTrack[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const runSearch = useCallback(
+    async (query: string) => {
+      const q = query.trim();
+      if (!q) {
+        setSearchResults(null);
+        setSearching(false);
+        return;
+      }
+      setSearching(true);
+      try {
+        // Dev-mode caps /search at limit=10, so pull two pages for ~20 hits.
+        const [a, b] = await Promise.all([
+          client.searchTracks(q, 10, 0),
+          client.searchTracks(q, 10, 10).catch(() => null),
+        ]);
+        const items = [...a.tracks.items, ...(b?.tracks.items ?? [])];
+        const seen = new Set<string>();
+        const enriched: EnrichedTrack[] = [];
+        for (const track of items) {
+          if (seen.has(track.id)) continue;
+          seen.add(track.id);
+          enriched.push({
+            track,
+            features: null,
+            genres: [],
+            primaryVibe: null,
+            matchedVibes: [],
+            bpm: null,
+            musicKey: null,
+          });
+        }
+        setSearchResults(enriched);
+      } catch (err) {
+        setSearchResults([]);
+        setError(err instanceof Error ? err.message : "Search failed");
+      } finally {
+        setSearching(false);
+      }
+    },
+    [client],
+  );
+
   const createPlaylist = useCallback(async () => {
     if (!session) return;
     setLoading(true);
@@ -385,6 +432,9 @@ export function useMeloraApp() {
     },
     refreshSession: manualRefresh,
     refreshesLeft,
+    searchResults,
+    searching,
+    runSearch,
     createPlaylist,
   };
 }

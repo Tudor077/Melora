@@ -368,6 +368,16 @@ input[type="number"] {
 .search-input::-webkit-search-cancel-button {
   display: none;
 }
+.search-spinner {
+  position: absolute;
+  right: 2.7rem;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+}
+
 .search-clear {
   position: absolute;
   right: 0.6rem;
