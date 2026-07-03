@@ -135,21 +135,84 @@ async function enrichTracks(
   return enriched;
 }
 
+// MusicBrainz/Spotify tags that are not real music genres, or that pull in
+// novelty compilations ("Comedy Hits", holiday albums…) when used as
+// free-text search terms.
+const JUNK_GENRES = new Set([
+  "comedy", "parody", "novelty", "meme",
+  "spoken word", "podcast", "audiobook", "poetry",
+  "children's music", "childrens music", "kids", "lullaby",
+  "seen live", "favorites", "favourite", "american", "british", "usa",
+  "christmas", "halloween", "holiday",
+  "karaoke", "tribute", "covers", "cover",
+  "soundtrack", "musical", "broadway", "theme",
+  "white noise", "sleep", "meditation", "asmr", "ambient noise",
+  "workout", "fitness",
+]);
+
+// Junk the free-text search waves love to return: karaoke/tribute/8-bit
+// covers, sleep-noise tracks, novelty compilations.
+const JUNK_TRACK_RE =
+  /karaoke|tribute|cover version|originally performed|made famous|in the style of|8[- ]?bit|lullab|white noise|rain sounds|sleep (music|sound|aid)|asmr|workout (mix|music)|kidz bop|comedy hits|parody/i;
+
+function isJunkTrack(track: SpotifyTrack): boolean {
+  return (
+    JUNK_TRACK_RE.test(track.name) ||
+    JUNK_TRACK_RE.test(track.album?.name ?? "") ||
+    track.artists.some((a) => JUNK_TRACK_RE.test(a.name))
+  );
+}
+
 async function collectDiscoveryTracks(
   client: SpotifyClient,
   limit: number,
   extraGenres: string[] = [],
 ): Promise<SpotifyTrack[]> {
-  const [topArtistsResult, topTracksResult] = await Promise.allSettled([
+  // Taste profile from four corners of the account: top artists, top tracks,
+  // Liked Songs, and a sample of the user's own playlists. Everything is
+  // best-effort — a missing scope or empty library just narrows the profile.
+  const [topArtistsResult, topTracksResult, savedResult, playlistsResult] = await Promise.allSettled([
     client.getTopArtists(20, "medium_term"),
     client.getTopTracks(50, "medium_term"),
+    client.getSavedTracks(50),
+    client.getUserPlaylists(10),
   ]);
 
   const topArtists = topArtistsResult.status === "fulfilled" ? topArtistsResult.value.items : [];
   const topTracks = topTracksResult.status === "fulfilled" ? topTracksResult.value.items : [];
+  const savedTracks =
+    savedResult.status === "fulfilled" ? savedResult.value.items.map((i) => i.track) : [];
 
+  let playlistTracks: SpotifyTrack[] = [];
+  if (playlistsResult.status === "fulfilled") {
+    const withTracks = playlistsResult.value.items
+      .filter((pl) => pl.tracks != null && pl.tracks.total > 0)
+      .slice(0, 3);
+    const results = await Promise.allSettled(
+      withTracks.map((pl) => client.getPlaylistTracks(pl.id, 20)),
+    );
+    playlistTracks = results.flatMap((r) =>
+      r.status === "fulfilled"
+        ? r.value.items.map((i) => i.track).filter((t): t is SpotifyTrack => t !== null)
+        : [],
+    );
+  }
+
+  const libraryTracks = [...savedTracks, ...playlistTracks];
+
+  // Known = already in the user's world; discovery should skip these and
+  // (for the collab wave) skip their primary artists too.
+  const knownTrackIds = new Set([...topTracks, ...libraryTracks].map((t) => t.id));
   const knownArtistIds = new Set(topArtists.map((a) => a.id));
-  const knownTrackIds = new Set(topTracks.map((t) => t.id));
+  const libArtistFreq = new Map<string, { name: string; count: number }>();
+  for (const track of libraryTracks) {
+    const a = track.artists[0];
+    if (!a) continue;
+    knownArtistIds.add(a.id);
+    const entry = libArtistFreq.get(a.id) ?? { name: a.name, count: 0 };
+    entry.count += 1;
+    libArtistFreq.set(a.id, entry);
+  }
 
   const candidates: SpotifyTrack[] = [];
 
@@ -157,6 +220,7 @@ async function collectDiscoveryTracks(
     for (const track of items) {
       if (knownTrackIds.has(track.id)) continue;
       if (filterArtist && knownArtistIds.has(track.artists[0]?.id ?? "")) continue;
+      if (isJunkTrack(track)) continue;
       candidates.push(track);
     }
   };
@@ -164,8 +228,10 @@ async function collectDiscoveryTracks(
   // Genre pool: caller-supplied genres (MusicBrainz tags, user-pinned) get
   // priority slots; Spotify artist genres fill the rest. Spotify's own tags
   // are empty for niche artists, so extras carry most of the signal.
-  const spotifyGenres = [...new Set(topArtists.flatMap((a) => a.genres ?? []))];
-  const prioritized = shuffle([...new Set(extraGenres)]).slice(0, 5);
+  // Junk tags (comedy, seen live, christmas…) are dropped before searching.
+  const cleanGenre = (g: string) => !JUNK_GENRES.has(g.toLowerCase().trim()) && g.length < 30;
+  const spotifyGenres = [...new Set(topArtists.flatMap((a) => a.genres ?? []))].filter(cleanGenre);
+  const prioritized = shuffle([...new Set(extraGenres)].filter(cleanGenre)).slice(0, 5);
   const searchGenres = [
     ...new Set([...prioritized, ...shuffle(spotifyGenres)]),
   ].slice(0, 8);
@@ -177,10 +243,16 @@ async function collectDiscoveryTracks(
   // queries instead of a few big ones.
 
   // Wave 1: collab search — tracks where a favorite artist appears but the
-  // primary artist is someone new (features, remixes, covers)
-  const featArtists = shuffle(topArtists.slice(0, 10)).slice(0, 6);
+  // primary artist is someone new (features, remixes). Seeds mix top artists
+  // with the artists most present in Liked Songs / playlists.
+  const librarySeeds = [...libArtistFreq.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8)
+    .map((e) => e.name);
+  const seedNames = [...new Set([...topArtists.slice(0, 10).map((a) => a.name), ...librarySeeds])];
+  const featArtists = shuffle(seedNames).slice(0, 8);
   const featResults = await Promise.allSettled(
-    featArtists.map((a) => client.searchTracks(`artist:"${a.name.replace(/"/g, "")}"`, 10)),
+    featArtists.map((name) => client.searchTracks(`artist:"${name.replace(/"/g, "")}"`, 10)),
   );
   for (const r of featResults) {
     if (r.status === "fulfilled") absorb(r.value.tracks.items);
