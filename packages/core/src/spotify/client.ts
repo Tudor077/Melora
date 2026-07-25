@@ -48,20 +48,128 @@ export class SpotifyApiError extends Error {
 export interface SpotifyClientOptions {
   getAccessToken: () => string | null;
   fetchImpl?: typeof fetch;
+  /** In-flight request ceiling. Dev mode caps /search at 10 results, so
+   *  discovery fires dozens of small queries and needs a throttle. */
+  maxConcurrent?: number;
+  /** Minimum ms between request starts. Dev-mode quotas (2026) trip after
+   *  10-20 calls in a rolling window, so bursts are what get apps throttled. */
+  minIntervalMs?: number;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The 429 cooldown outlives the page: a reload creates a fresh client, and
+ * without persistence every F5 fired a brand-new batch straight into the
+ * rate limit — the exact behaviour that keeps the throttle alive.
+ */
+const COOLDOWN_KEY = "melora:spotify-cooldown-until";
+
+function loadStoredCooldown(): number {
+  try {
+    const raw = (globalThis as { localStorage?: Storage }).localStorage?.getItem(COOLDOWN_KEY);
+    const stored = raw ? Number.parseInt(raw, 10) : 0;
+    return Number.isFinite(stored) && stored > Date.now() ? stored : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export class SpotifyClient {
   private readonly fetchImpl: typeof fetch;
+  private readonly maxConcurrent: number;
+  private readonly minIntervalMs: number;
+  private active = 0;
+  private readonly waiting: Array<() => void> = [];
+  /** Set while Spotify has us in a 429 timeout; every request waits it out. */
+  private cooldownUntil = loadStoredCooldown();
+  /** Next moment a request is allowed to start (global pacing). */
+  private nextSlotAt = 0;
 
   constructor(private readonly options: SpotifyClientOptions) {
     this.fetchImpl = options.fetchImpl ?? fetch.bind(globalThis);
+    // 2, not 6: dev-mode rate limits are tight and burst-sensitive, and the
+    // batch is latency-bound on MusicBrainz anyway.
+    this.maxConcurrent = options.maxConcurrent ?? 2;
+    this.minIntervalMs = options.minIntervalMs ?? 900;
+  }
+
+  /**
+   * Global request pacing: ~1 request/second regardless of how many callers
+   * queue up. Dev-mode quotas measure a rolling window, so a steady trickle
+   * passes where a parallel burst of the same size gets everything 429'd.
+   */
+  private async pace(): Promise<void> {
+    const now = Date.now();
+    const wait = this.nextSlotAt - now;
+    this.nextSlotAt = Math.max(this.nextSlotAt, now) + this.minIntervalMs;
+    if (wait > 0) await sleep(wait);
+  }
+
+  private setCooldown(until: number): void {
+    this.cooldownUntil = Math.max(this.cooldownUntil, until);
+    try {
+      (globalThis as { localStorage?: Storage }).localStorage?.setItem(
+        COOLDOWN_KEY,
+        String(this.cooldownUntil),
+      );
+    } catch {
+      // Storage unavailable: in-memory cooldown still protects this session.
+    }
+  }
+
+  /** Semaphore: discovery hands us ~40 queries at once, Spotify wants fewer. */
+  private async acquire(): Promise<void> {
+    if (this.active < this.maxConcurrent) {
+      this.active += 1;
+      return;
+    }
+    // The slot is handed over by release(), which never gives it up in the
+    // meantime — so nothing is counted here, or two callers racing a release
+    // would both squeeze past the limit.
+    await new Promise<void>((resolve) => this.waiting.push(resolve));
+  }
+
+  private release(): void {
+    const next = this.waiting.shift();
+    if (next) {
+      next();
+      return;
+    }
+    this.active -= 1;
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    await this.acquire();
+    try {
+      return await this.requestWithRetry<T>(path, init);
+    } finally {
+      this.release();
+    }
+  }
+
+  private async requestWithRetry<T>(path: string, init?: RequestInit, attempt = 0): Promise<T> {
     const token = this.options.getAccessToken();
     if (!token) {
       throw new SpotifyApiError("Not authenticated with Spotify", 401);
     }
+
+    const wait = this.cooldownUntil - Date.now();
+    if (wait > 0) {
+      // Long cooldown: fail fast without touching the network. Queueing forty
+      // requests behind a rate limit and releasing them together is exactly
+      // the "request storm" behaviour that gets an app throttled for longer.
+      if (wait > 10_000) {
+        throw new SpotifyApiError(
+          `Spotify rate limit: cooling down for ${Math.ceil(wait / 1000)}s`,
+          429,
+        );
+      }
+      await sleep(wait);
+    }
+
+    // Even outside a cooldown, keep request starts spaced out.
+    await this.pace();
 
     const response = await this.fetchImpl(`${SPOTIFY_API}${path}`, {
       ...init,
@@ -71,6 +179,33 @@ export class SpotifyClient {
         ...(init?.headers ?? {}),
       },
     });
+
+    // 429 applies to the whole app, not just this call, so park every other
+    // request behind the same cooldown instead of each one discovering it.
+    // Retry-After is honoured in full — trimming it and retrying anyway reads
+    // as abuse on Spotify's side and stretches the throttle window.
+    if (response.status === 429) {
+      const header = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
+      const delay = (Number.isFinite(header) ? header : 2 ** attempt) * 1000;
+      this.setCooldown(Date.now() + delay);
+      // Short cooldowns (Retry-After of a few seconds) are worth waiting out
+      // in place; anything longer means Spotify wants quiet, so surface the
+      // error instead of piling retries onto the throttle.
+      if (attempt < 2 && delay <= 10_000) {
+        await sleep(delay);
+        return this.requestWithRetry<T>(path, init, attempt + 1);
+      }
+      throw new SpotifyApiError(
+        `Spotify rate limit hit (retry in ${Math.ceil(delay / 1000)}s)`,
+        429,
+      );
+    }
+
+    // Transient upstream failures; one retry costs less than a failed batch.
+    if (response.status >= 500 && attempt < 2) {
+      await sleep(300 * (attempt + 1));
+      return this.requestWithRetry<T>(path, init, attempt + 1);
+    }
 
     if (!response.ok) {
       const body = await readResponseBody(response);

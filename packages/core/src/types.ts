@@ -123,6 +123,8 @@ export interface DiscoverySession {
   expiresAt: string;
   seedTrackIds: string[];
   tracks: EnrichedTrack[];
+  /** Per-wave generation trace, shown when a batch comes back empty. */
+  debug?: string;
 }
 
 export interface RecommendationSeedOptions {

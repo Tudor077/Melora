@@ -1,22 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  applyFeedback,
+  cacheSession,
   createPlaylistFromSession,
   DEFAULT_VIBES,
   filterTracks,
   getOrCreateDiscoverySession,
   generateDiscoverySession,
+  getTasteProfile,
+  loadCachedProfile,
+  loadFeedback,
+  saveFeedback,
   sortTracks,
   SORT_OPTIONS,
+  topArtistNames,
   uniqueGenres,
   type DiscoveryCadence,
   type DiscoveryFilters,
   type DiscoverySession,
   type EnrichedTrack,
+  type FeedbackEvent,
+  type FeedbackStore,
   type SortField,
   type SortOption,
 } from "@melora/core";
 import { lookupBpms } from "../lib/bpm-lookup";
-import { lookupArtistGenres } from "../lib/artist-genres";
+import { cachedArtistGenreMap, lookupArtistGenreMap } from "../lib/artist-genres";
 import { stopPlayback } from "./useSpotifyEmbed";
 
 const PINNED_GENRES_KEY = "melora:pinned-genres:v1";
@@ -82,6 +91,39 @@ export function useMeloraApp() {
   // add/remove sees the new list (state updates are async)
   const pinnedGenresRef = useRef<string[]>(pinnedGenres);
 
+  // Hearts, skips and impressions from earlier batches. Kept in a ref because
+  // discovery reads it inside an async callback, where a state snapshot would
+  // be one render behind.
+  const feedbackRef = useRef<FeedbackStore>(loadFeedback());
+  const pushFeedback = useCallback((events: FeedbackEvent[]) => {
+    if (events.length === 0) return;
+    feedbackRef.current = applyFeedback(feedbackRef.current, events);
+    saveFeedback(feedbackRef.current);
+  }, []);
+
+  // Every track the UI has shown, so an event fired from a card can look up
+  // that track's genres without threading the whole entry through the call.
+  const trackIndexRef = useRef<Map<string, EnrichedTrack>>(new Map());
+
+  /**
+   * Record what the user did with a track. Genres come from the index, so the
+   * signal lands on the genre as well as the artist: skipping three drum and
+   * bass tracks in a row should quiet drum and bass, not just those artists.
+   */
+  const recordTrackEvent = useCallback(
+    (kind: "like" | "unlike" | "skip" | "played", trackId: string, playedMs = 0) => {
+      const entry = trackIndexRef.current.get(trackId);
+      if (!entry) return;
+      const base = { track: entry.track, genres: entry.genres };
+      pushFeedback([
+        kind === "like" || kind === "unlike"
+          ? { kind, ...base }
+          : { kind, ...base, playedMs },
+      ]);
+    },
+    [pushFeedback],
+  );
+
   const client = useMemo(() => getSpotifyClient(), []);
   const sort: SortOption = useMemo(
     () => ({ field: sortField, direction: sortDirection }),
@@ -107,22 +149,52 @@ export function useMeloraApp() {
       setPlaylistUrl(null);
 
       try {
-        // Taste profile: MusicBrainz tags for top artists (Spotify's own
-        // genre field is empty for niche artists) + user-pinned genres.
+        // MusicBrainz tags for the user's top artists. Spotify's own genre
+        // field is empty for niche artists, so without this the taste profile
+        // collapses to whatever mainstream tags it can find.
         const pinned = pinnedGenresRef.current;
-        let extraGenres = [...pinned];
+        let artistGenres: Record<string, string[]> = {};
         try {
-          const top = await client.getTopArtists(12, "medium_term");
-          const mbGenres = await lookupArtistGenres(top.items.map((a) => a.name));
-          extraGenres = [...new Set([...pinned, ...mbGenres])];
+          // The cached profile already knows the top artists; only a cold
+          // start (no profile yet) spends an API call on the name list.
+          const cachedProfile = loadCachedProfile();
+          const names = cachedProfile
+            ? topArtistNames(cachedProfile, 20)
+            : (await client.getTopArtists(20, "medium_term")).items.map((a) => a.name);
+          // Cached tags are instant. Uncached ones get a short budget here so
+          // a first run is not stuck behind MusicBrainz's 1 req/s limit, then
+          // a background pass keeps filling the cache for the next refresh.
+          artistGenres = { ...cachedArtistGenreMap(names), ...(await lookupArtistGenreMap(names, 3000)) };
+          void lookupArtistGenreMap(names, 25000).catch(() => {});
         } catch {
           // profiling is best-effort; pinned genres still apply
         }
 
-        const options = { cadence, sort, filters, limit: 24, extraGenres };
-        const nextSession = force
-          ? await generateDiscoverySession(client, options)
-          : await getOrCreateDiscoverySession(client, options);
+        const profile = await getTasteProfile(client, {
+          artistGenres,
+          pinnedGenres: pinned,
+        });
+
+        // Sort and filters stay out of the batch itself: the UI re-sorts and
+        // re-filters what it has, so baking them in here would only mean a
+        // discarded track is gone for good when the user widens a filter.
+        const options = {
+          cadence,
+          limit: 24,
+          extraGenres: pinned,
+          artistGenres,
+          profile,
+          feedback: feedbackRef.current,
+        };
+        let nextSession;
+        if (force) {
+          nextSession = await generateDiscoverySession(client, options);
+          // getOrCreate caches for us; a forced batch has to cache itself, or
+          // a reload would drop back to the batch it replaced.
+          cacheSession(nextSession);
+        } else {
+          nextSession = await getOrCreateDiscoverySession(client, options);
+        }
 
         setSession(nextSession);
       } catch (err) {
@@ -131,7 +203,10 @@ export function useMeloraApp() {
         setLoading(false);
       }
     },
-    [cadence, client, filters, sort],
+    // Deliberately not depending on sort/filters: those are view state, and
+    // re-running discovery when the user flips a sort order is 30 wasted
+    // API calls for a batch that would come back identical.
+    [cadence, client],
   );
 
   const addPinnedGenre = useCallback((genre: string) => {
@@ -257,6 +332,21 @@ export function useMeloraApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
 
+  // A generated batch counts as shown: the next batch should move on rather
+  // than serve the same songs again an hour later.
+  useEffect(() => {
+    if (!session || session.tracks.length === 0) return;
+    for (const entry of session.tracks) trackIndexRef.current.set(entry.track.id, entry);
+    pushFeedback(
+      session.tracks.map((entry) => ({
+        kind: "shown" as const,
+        track: entry.track,
+        genres: entry.genres,
+      })),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
+
   const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
 
   // When a session loads, ask Spotify which of its tracks are already in the
@@ -302,6 +392,9 @@ export function useMeloraApp() {
         else next.add(trackId);
         return next;
       });
+      // A heart is the loudest taste signal the app gets, so it feeds the
+      // model straight away rather than waiting for the next profile rebuild.
+      recordTrackEvent(wasLiked ? "unlike" : "like", trackId);
       try {
         if (wasLiked) await client.removeTracks([trackId]);
         else await client.saveTracks([trackId]);
@@ -315,7 +408,7 @@ export function useMeloraApp() {
         setError(err instanceof Error ? err.message : "Couldn't update Liked Songs");
       }
     },
-    [client, likedTrackIds],
+    [client, likedTrackIds, recordTrackEvent],
   );
 
   // Manual refresh is capped at 5 per rolling hour.
@@ -371,6 +464,7 @@ export function useMeloraApp() {
             musicKey: null,
           });
         }
+        for (const entry of enriched) trackIndexRef.current.set(entry.track.id, entry);
         setSearchResults(enriched);
       } catch (err) {
         setSearchResults([]);
@@ -421,6 +515,7 @@ export function useMeloraApp() {
     playlistUrl,
     likedTrackIds,
     toggleLike,
+    recordTrackEvent,
     pinnedGenres,
     addPinnedGenre,
     removePinnedGenre,

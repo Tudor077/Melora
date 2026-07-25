@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMeloraApp } from "./hooks/useMeloraApp";
 import { useSpotifyEmbed } from "./hooks/useSpotifyEmbed";
 import { useIsMobile } from "./hooks/useIsMobile";
@@ -55,6 +55,34 @@ export default function App() {
       document.removeEventListener("contextmenu", noCtx);
     };
   }, []);
+
+  // Watch how long each track actually got listened to. Leaving a song after
+  // three seconds says something a heart never will, and it is the only
+  // negative signal the app can collect without adding a reject button.
+  const recordTrackEvent = app.recordTrackEvent;
+  const lastPlaybackRef = useRef<{ id: string | null; position: number; duration: number }>({
+    id: null,
+    position: 0,
+    duration: 0,
+  });
+  useEffect(() => {
+    const previous = lastPlaybackRef.current;
+    if (previous.id && previous.id !== playback.trackId) {
+      const finished = previous.duration > 0 && previous.position >= previous.duration * 0.8;
+      recordTrackEvent(
+        finished || previous.position >= 25000 ? "played" : "skip",
+        previous.id,
+        previous.position,
+      );
+      lastPlaybackRef.current = { id: playback.trackId, position: 0, duration: 0 };
+      return;
+    }
+    lastPlaybackRef.current = {
+      id: playback.trackId,
+      position: playback.position,
+      duration: playback.duration,
+    };
+  }, [playback, recordTrackEvent]);
 
   const isSearching = query.trim().length > 0;
   const shownTracks = app.visibleTracks.filter((entry) => inBand(entry.bpm, bpmBand));
@@ -205,13 +233,20 @@ export default function App() {
             />
           ))}
           {desktopTracks.length === 0 && !app.searching && !app.loading && (
-            <p className="empty">
-              {isSearching
-                ? `No results for "${query.trim()}".`
-                : app.visibleTracks.length === 0
-                  ? "No tracks found. Try refreshing to discover new music."
-                  : "No tracks in this BPM range (some are still loading their BPM)."}
-            </p>
+            <>
+              <p className="empty">
+                {isSearching
+                  ? `No results for "${query.trim()}".`
+                  : app.visibleTracks.length === 0
+                    ? "No tracks found. Try refreshing to discover new music."
+                    : "No tracks in this BPM range (some are still loading their BPM)."}
+              </p>
+              {!isSearching && app.visibleTracks.length === 0 && app.session?.debug && (
+                <pre className="empty" style={{ fontSize: "0.75rem", whiteSpace: "pre-wrap", opacity: 0.7 }}>
+                  {app.session.debug}
+                </pre>
+              )}
+            </>
           )}
         </section>
       )}

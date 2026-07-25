@@ -108,12 +108,38 @@ VITE_SPOTIFY_REDIRECT_URI=http://127.0.0.1:5174/callback
 
 ## How discovery works
 
-1. **Seeds**: Melora reads your top tracks and saved/liked songs
-2. **Recommendations**: Spotify's `/recommendations` endpoint finds similar tracks
-3. **Enrichment**: Each track gets audio features (BPM/tempo, energy, valence, danceability) and artist genres
-4. **Vibes**: Tracks are labeled with vibes like Chill, Hype, Focus, Happy, etc.
-5. **Cadence**: Results are cached per hour or per day so you get a fresh batch on schedule
-6. **Playlist export**: One click creates a new private Spotify playlist from the current batch
+Spotify retired `/recommendations` and `/audio-features` for development-mode
+apps, and caps `/search` at 10 results a call. Melora builds its own
+recommender on top of what is left: many small searches, ranked locally.
+
+1. **Taste profile**: top artists across all three listening windows, top
+   tracks, Liked Songs and your biggest playlists are folded into weighted
+   artist and genre affinities, plus the popularity band and era you actually
+   listen in. Spotify leaves `genres` empty on niche artists, so MusicBrainz
+   tags fill the gap. Cached for six hours, since a library barely moves.
+2. **Search waves**: collaborations featuring artists you love, genre searches
+   (both Spotify's `genre:` filter and free text) anchored on your era, and
+   brand-new releases from your favourites. Every hit remembers the query that
+   found it, which is what gives an unlabelled track a genre.
+3. **Scoring**: each candidate is ranked on taste match, collaboration bonus,
+   how well its popularity and release year fit your habits, and what your
+   hearts and skips have said about that genre or artist before.
+4. **Diversity pass**: picks are chosen greedily with a growing penalty for an
+   artist or genre already in the batch, so 24 picks span your taste instead
+   of drilling into one corner of it.
+5. **No repeats**: shown tracks are remembered for ten days, and each refresh
+   walks to different pages of its queries.
+6. **Feedback**: hearts, skips and how long you actually listened feed back
+   into genre and artist scores, decaying with a 30-day half-life. Skip enough
+   drum and bass and Melora stops spending searches on it, without locking the
+   genre out for good.
+7. **Cadence**: results are cached per hour or per day so you get a fresh batch
+   on schedule.
+8. **Playlist export**: one click creates a new private Spotify playlist from
+   the current batch.
+
+All of it runs on the device and lives in `localStorage`. There is no server,
+and nothing about your listening leaves your machine.
 
 ## Sorting & filters
 
@@ -139,7 +165,7 @@ VITE_SPOTIFY_REDIRECT_URI=http://127.0.0.1:5174/callback
 
 - [ ] Add token refresh handling in the web app
 - [ ] Wire Expo AuthSession + SecureStore for mobile login
-- [ ] Add "exclude already heard" using recently played
+- [x] Add "exclude already heard" (shown tracks are remembered for 10 days)
 - [ ] Push notifications for hourly/daily drops on mobile/desktop
 
 ## Requirements

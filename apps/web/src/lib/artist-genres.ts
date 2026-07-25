@@ -58,24 +58,25 @@ async function fetchArtistTags(name: string): Promise<string[]> {
 }
 
 /**
- * Resolve genre tags for a list of artist names. Cached names are free;
- * uncached ones are fetched sequentially (1/s) until `budgetMs` runs out —
- * whatever was fetched gets cached, so the pool grows across refreshes.
+ * Resolve genre tags per artist. Cached names are free; uncached ones are
+ * fetched sequentially (1/s) until `budgetMs` runs out — whatever was fetched
+ * gets cached, so the pool grows across refreshes.
+ *
+ * Returns a map rather than a flat list so each tag keeps the artist it came
+ * from: the taste profile weights a tag by how much the user listens to that
+ * artist, and track cards label themselves from the same map.
  */
-export async function lookupArtistGenres(
+export async function lookupArtistGenreMap(
   artistNames: string[],
   budgetMs = 8000,
-): Promise<string[]> {
-  const genres = new Set<string>();
+): Promise<Record<string, string[]>> {
+  const result: Record<string, string[]> = {};
   const missing: string[] = [];
 
   for (const name of artistNames) {
     const key = name.toLowerCase();
-    if (key in cache) {
-      for (const g of cache[key]) genres.add(g);
-    } else {
-      missing.push(name);
-    }
+    if (key in cache) result[key] = cache[key] as string[];
+    else missing.push(name);
   }
 
   const deadline = Date.now() + budgetMs;
@@ -83,12 +84,22 @@ export async function lookupArtistGenres(
     if (Date.now() >= deadline) break;
     const tags = await fetchArtistTags(name);
     cache[name.toLowerCase()] = tags;
-    for (const g of tags) genres.add(g);
+    result[name.toLowerCase()] = tags;
     if (missing.indexOf(name) < missing.length - 1) {
       await new Promise((r) => setTimeout(r, REQUEST_SPACING_MS));
     }
   }
   saveCache();
 
-  return [...genres];
+  return result;
+}
+
+/** Tags already cached for these artists, with no network access at all. */
+export function cachedArtistGenreMap(artistNames: string[]): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  for (const name of artistNames) {
+    const key = name.toLowerCase();
+    if (key in cache) result[key] = cache[key] as string[];
+  }
+  return result;
 }
