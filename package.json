@@ -1,7 +1,7 @@
 {
   "name": "melora",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Hourly & daily music discovery powered by Spotify",
   "scripts": {
     "dev": "npm run dev --workspace @melora/web",
