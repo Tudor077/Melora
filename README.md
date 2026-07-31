@@ -1,6 +1,6 @@
 # Melora
 
-### ⬇️ [Download Melora](https://tudor077.github.io/Melora/download.html) for Windows & Android
+### ⬇️ [Download Melora](https://tudor077.github.io/Melora/download.html) for Windows, Linux & Android
 
 Discover new songs **hourly** or **daily** based on what you already love on Spotify. Sort and filter picks by **BPM**, **genre**, **vibe**, energy, mood, popularity, and release date, then export to a fresh Spotify playlist.
 
@@ -13,6 +13,7 @@ On your phone, every track is full-screen. **Swipe** to the next one and it play
 Grab the latest build from the [download page](download.html) or the releases folder:
 
 - **Windows**: `releases/latest/Melora.exe`. Just run it, no install needed. SmartScreen may warn for a new publisher, so pick **More info, Run anyway**.
+- **Linux**: `Melora.AppImage` from the [latest GitHub Release](https://github.com/Tudor077/Melora/releases/latest) (too big for the repo — it carries its own WebKitGTK and codecs). `chmod +x Melora.AppImage`, then run it — portable, no install. Needs FUSE (`fuse2` on Arch, `libfuse2` on Debian/Ubuntu); without it, run it with `--appimage-extract-and-run`.
 - **Android**: `releases/latest/Melora.apk`. Allow installs from your browser when prompted.
 
 ### First run: connect your own Spotify app
@@ -154,6 +155,7 @@ and nothing about your listening leaves your machine.
 | `npm run dev:desktop` | Tauri desktop (requires Rust + Tauri prerequisites) |
 | `npm run dev:mobile` | Expo dev server |
 | `npm run build` | Build all workspaces |
+| `npm run build:linux` | Build the Linux AppImage into `releases/latest/` (Linux only) |
 
 ## Spotify API scopes used
 
@@ -174,3 +176,28 @@ and nothing about your listening leaves your machine.
 - Spotify account + Developer app Client ID
 - For desktop: [Rust](https://rustup.rs/) + [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 - For mobile: Expo Go or dev builds
+
+### Building on Linux (Arch / CachyOS)
+
+```bash
+sudo pacman -S --needed base-devel webkit2gtk-4.1 libappindicator-gtk3 librsvg appmenu-gtk-module xdotool patchelf fuse2 squashfs-tools gst-plugins-good nodejs npm rustup
+rustup default stable
+npm install
+npm run build:linux
+```
+
+On Debian/Ubuntu the equivalents are `build-essential libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 squashfs-tools`.
+
+Cargo output goes to `apps/desktop/src-tauri/target-linux/`, kept separate from the
+Windows `target/` so a dual-boot checkout does not rebuild everything on each switch.
+The AppImage bundles GStreamer (`bundleMediaFramework`), so the Spotify embed player
+has its codecs on distros that ship none — which is most of the 168 MB.
+
+It lands in `releases/latest/Melora.AppImage`, git-ignored: at that size GitHub
+rejects it in a commit, so `scripts/release.mjs` uploads it to the GitHub Release
+and the download page links there. Build it before cutting a release, or the
+release script warns and ships Windows + Android only.
+
+On NVIDIA the app forces `WEBKIT_DISABLE_DMABUF_RENDERER=1` at startup
+([main.rs](apps/desktop/src-tauri/src/main.rs)); without it WebKitGTK cannot
+allocate its GBM buffers and the window stays blank.

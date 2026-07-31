@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Melora Download</title>
-  <meta name="description" content="Melora: find your next favorite song every day, picked from your Spotify taste. Download for Windows and Android." />
+  <meta name="description" content="Melora: find your next favorite song every day, picked from your Spotify taste. Download for Windows, Linux and Android." />
   <link rel="icon" type="image/png" href="melora-logo.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -114,6 +114,12 @@
       border-color: rgba(169,196,239,0.25);
       box-shadow: 0 8px 30px rgba(28,42,74,0.5);
     }
+    .btn-linux {
+      background: linear-gradient(180deg, #4b4d59, #2c2e38);
+      color: #f0f2f7;
+      border-color: rgba(240,166,35,0.25);
+      box-shadow: 0 8px 30px rgba(20,20,26,0.55);
+    }
     .btn.highlight { outline: 2px solid var(--periwinkle); outline-offset: 3px; }
 
     .dl-meta {
@@ -154,7 +160,8 @@
 
     /* ── INSTALL NOTES ── */
     .notes {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 56px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px; margin-bottom: 56px;
     }
     .note {
       background: var(--surface); border: 1px solid var(--border);
@@ -229,6 +236,25 @@
         </span>
         <span class="txt"><b>Download for Android</b><small>universal (.apk) · 18 MB</small></span>
       </a>
+
+      <!-- Linux ships from GitHub Releases: the AppImage carries its own WebKitGTK
+           and GStreamer, so it is far past the 100 MB a file can be in the repo. -->
+      <a class="btn btn-linux" id="btn-linux" href="https://github.com/Tudor077/Melora/releases/latest/download/Melora.AppImage">
+        <span class="ico">
+          <svg width="26" height="26" viewBox="0 0 24 24">
+            <ellipse cx="12" cy="14.6" rx="6.6" ry="7.1" fill="currentColor"/>
+            <circle cx="12" cy="6.6" r="4.6" fill="currentColor"/>
+            <ellipse cx="12" cy="15.7" rx="4" ry="4.9" fill="#f4f6fb" opacity=".92"/>
+            <circle cx="10.2" cy="6.2" r=".95" fill="#fff"/>
+            <circle cx="13.8" cy="6.2" r=".95" fill="#fff"/>
+            <circle cx="10.35" cy="6.35" r=".5" fill="#12131a"/>
+            <circle cx="13.65" cy="6.35" r=".5" fill="#12131a"/>
+            <path d="M12 7.5l2 1.15-2 1.15-2-1.15z" fill="#f0a623"/>
+            <path d="M8.5 20.9c-.6.9-2.1 1.2-2.8.6.3-1 1.4-1.9 2.5-2.1zM15.5 20.9c.6.9 2.1 1.2 2.8.6-.3-1-1.4-1.9-2.5-2.1z" fill="#f0a623"/>
+          </svg>
+        </span>
+        <span class="txt"><b>Download for Linux</b><small>x86_64 · portable (.AppImage) · 168 MB</small></span>
+      </a>
     </div>
 
     <div class="dl-meta">
@@ -273,6 +299,10 @@
       <h4>🤖 Installing on Android</h4>
       <p>Open the <code>.apk</code> and allow installs from your browser when prompted (<strong>Settings → Install unknown apps</strong>). Updates keep your login.</p>
     </div>
+    <div class="note">
+      <h4>🐧 Running on Linux</h4>
+      <p>Mark it executable and run it, no install needed: <code>chmod +x Melora.AppImage</code> then <code>./Melora.AppImage</code>. Needs FUSE (<code>fuse2</code> on Arch, <code>libfuse2</code> on Ubuntu); without it, run <code>./Melora.AppImage --appimage-extract-and-run</code>.</p>
+    </div>
   </section>
 
   <section class="terms">
@@ -303,8 +333,11 @@
     var ua = navigator.userAgent || "";
     var isAndroid = /Android/i.test(ua);
     var isWindows = /Windows/i.test(ua);
+    // Android UA strings also say "Linux", so it has to be checked last.
+    var isLinux = /Linux|X11/i.test(ua);
     if (isAndroid) document.getElementById("btn-and").classList.add("highlight");
     else if (isWindows) document.getElementById("btn-win").classList.add("highlight");
+    else if (isLinux) document.getElementById("btn-linux").classList.add("highlight");
   })();
 
   // Version + date come from releases/latest/version.json, so a new release

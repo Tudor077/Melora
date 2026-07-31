@@ -13,7 +13,12 @@ Thumbs.db
 .claude/
 *.log
 target/
+target-linux/
 src-tauri/target/
+# The Linux AppImage bundles WebKitGTK + GStreamer (~170 MB), past GitHub's
+# 100 MB per-file limit. It ships as a GitHub Release asset instead.
+releases/*/Melora.AppImage
+releases/latest/linux.json
 .gradle/
 apps/desktop/src-tauri/gen/android/app/build/
 apps/desktop/src-tauri/gen/android/build/

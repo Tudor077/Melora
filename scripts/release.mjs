@@ -11,12 +11,14 @@
  *   1. Bumps version in tauri.conf.json, Cargo.toml, package.json (root)
  *   2. Builds the standalone Windows .exe and the Android APK
  *   3. Copies both into releases/latest/ (stable download URLs) and
- *      releases/v{version}/ (archive), updates releases/latest/version.json
+ *      releases/v{version}/ (archive), updates releases/latest/version.json.
+ *      The Linux AppImage comes from `npm run build:linux` on the Linux boot
+ *      and is picked up here when its version matches.
  *   4. Commits and pushes
  *   5. Creates a GitHub Release with both binaries attached (gh CLI)
  */
 
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, existsSync } from "fs";
 import { execSync } from "child_process";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -100,6 +102,24 @@ for (const dir of [latestDir, versionDir]) {
   copyFileSync(exe, join(dir, "Melora.exe"));
   copyFileSync(apk, join(dir, "Melora.apk"));
 }
+
+// The Linux AppImage can only be built on Linux (npm run build:linux), so it is
+// carried over from whatever the last Linux build produced. Ship it if it
+// matches this version, otherwise leave it out rather than publish a stale one.
+// It is too big to commit, so GitHub Releases is its only home — which is where
+// the download page points for Linux.
+const appImage = join(latestDir, "Melora.AppImage");
+const linuxMarker = join(latestDir, "linux.json");
+const linuxVersion = existsSync(linuxMarker) ? readJson(linuxMarker).version : null;
+const hasLinux = existsSync(appImage) && linuxVersion === newVersion;
+if (!hasLinux) {
+  console.warn(
+    `⚠  No Linux AppImage for v${newVersion}` +
+      (linuxVersion ? ` (releases/latest has v${linuxVersion})` : "") +
+      `.\n   Boot Linux, run "npm run build:linux", then:\n` +
+      `   gh release upload v${newVersion} releases/latest/Melora.AppImage --clobber`,
+  );
+}
 writeJson(join(latestDir, "version.json"), {
   version: newVersion,
   date: new Date().toISOString().slice(0, 10),
@@ -116,7 +136,8 @@ console.log(`✓ pushed`);
 execSync(
   `${GH} release create v${newVersion} --title "Melora v${newVersion}" --notes "${notes.replace(/"/g, '\\"')}" ` +
     `"${join(latestDir, "Melora.exe")}#Melora.exe (Windows x64)" ` +
-    `"${join(latestDir, "Melora.apk")}#Melora.apk (Android)"`,
+    `"${join(latestDir, "Melora.apk")}#Melora.apk (Android)"` +
+    (hasLinux ? ` "${appImage}#Melora.AppImage (Linux x64)"` : ""),
   { cwd: ROOT, stdio: "inherit" },
 );
 
