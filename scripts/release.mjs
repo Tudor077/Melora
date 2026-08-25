@@ -103,21 +103,22 @@ for (const dir of [latestDir, versionDir]) {
   copyFileSync(apk, join(dir, "Melora.apk"));
 }
 
-// The Linux AppImage can only be built on Linux (npm run build:linux), so it is
-// carried over from whatever the last Linux build produced. Ship it if it
-// matches this version, otherwise leave it out rather than publish a stale one.
-// It is too big to commit, so GitHub Releases is its only home — which is where
-// the download page points for Linux.
+// The Linux AppImage can only be built on Linux (npm run build:linux), so a
+// local one is only shipped when it matches this version — never a stale one.
+// When it does not match, GitHub Actions builds it from the published release
+// (.github/workflows/linux-release.yml) and attaches it a few minutes later,
+// so booting Linux by hand is optional. It is too big to commit, which makes
+// GitHub Releases its only home — where the download page points for Linux.
 const appImage = join(latestDir, "Melora.AppImage");
 const linuxMarker = join(latestDir, "linux.json");
 const linuxVersion = existsSync(linuxMarker) ? readJson(linuxMarker).version : null;
 const hasLinux = existsSync(appImage) && linuxVersion === newVersion;
 if (!hasLinux) {
-  console.warn(
-    `⚠  No Linux AppImage for v${newVersion}` +
+  console.log(
+    `🐧  No local Linux AppImage for v${newVersion}` +
       (linuxVersion ? ` (releases/latest has v${linuxVersion})` : "") +
-      `.\n   Boot Linux, run "npm run build:linux", then:\n` +
-      `   gh release upload v${newVersion} releases/latest/Melora.AppImage --clobber`,
+      `.\n    GitHub Actions will build and attach it once the release is published:\n` +
+      `    https://github.com/Tudor077/Melora/actions/workflows/linux-release.yml`,
   );
 }
 writeJson(join(latestDir, "version.json"), {

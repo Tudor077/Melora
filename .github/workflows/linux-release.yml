@@ -1,0 +1,83 @@
+# Builds the Linux AppImage and attaches it to a GitHub Release.
+#
+# Why CI and not scripts/release.mjs: the release script runs on Windows, and
+# a Tauri Linux bundle needs WebKitGTK + a Linux toolchain. The AppImage also
+# carries its own WebKitGTK/GStreamer (~170 MB), well past the 100 MB a file
+# can be inside the repo — so it ships as a release asset, which is exactly
+# what download.html links to (/releases/latest/download/Melora.AppImage).
+name: Linux AppImage
+
+on:
+  # Fires automatically for every release scripts/release.mjs publishes.
+  release:
+    types: [published]
+  # Manual re-run for a tag that already exists.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach (e.g. v0.5.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    runs-on: ubuntu-22.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Tauri v2 wants webkit2gtk 4.1; the rest is what the AppImage bundler
+      # needs to relocate libraries into the bundle.
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libgtk-3-dev \
+            libxdo-dev \
+            libssl-dev \
+            patchelf \
+            file
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: linux-cargo-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: linux-cargo-
+
+      - run: npm ci
+
+      - name: Build AppImage
+        working-directory: apps/desktop
+        run: npx tauri build --bundles appimage
+
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          APPIMAGE=$(find apps/desktop/src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "No AppImage produced" >&2
+            exit 1
+          fi
+          cp "$APPIMAGE" Melora.AppImage
+          ls -lh Melora.AppImage
+          gh release upload "$TAG" "Melora.AppImage#Melora.AppImage (Linux x86_64)" --clobber

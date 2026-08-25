@@ -164,8 +164,16 @@ export default function App() {
             onClick={() => app.refreshSession()}
             disabled={app.loading || app.refreshesLeft === 0}
             title={`${app.refreshesLeft} of 5 refreshes left this hour`}
+            aria-busy={app.refreshing}
           >
-            Refresh now{app.refreshesLeft < 5 ? ` (${app.refreshesLeft})` : ""}
+            {app.refreshing ? (
+              <>
+                <span className="btn-spinner spin" aria-hidden="true" />
+                Refreshing…
+              </>
+            ) : (
+              <>Refresh now{app.refreshesLeft < 5 ? ` (${app.refreshesLeft})` : ""}</>
+            )}
           </button>
           <button className="ghost" onClick={app.createPlaylist} disabled={app.loading || !app.session}>
             Save as playlist
@@ -217,6 +225,16 @@ export default function App() {
         )}
       </div>
 
+      {/* Generating a batch takes ~10-20s under Spotify's dev-mode pacing, so
+          say so explicitly — a greyed-out button alone reads as "nothing
+          happened" when the old picks are still on screen. */}
+      {app.refreshing && app.session && (
+        <p className="refresh-status">
+          <span className="btn-spinner spin" aria-hidden="true" />
+          Finding new songs… this takes a few seconds.
+        </p>
+      )}
+
       {app.error && <p className="error banner">{app.error}</p>}
       {app.playlistUrl && (
         <p className="success banner">
@@ -232,7 +250,7 @@ export default function App() {
       ) : isSearching && app.searching && desktopTracks.length === 0 ? (
         <div className="loading">Searching Spotify…</div>
       ) : (
-        <section className="track-grid">
+        <section className={`track-grid ${app.refreshing ? "is-refreshing" : ""}`}>
           {desktopTracks.map((entry) => (
             <TrackCard
               key={entry.track.id}

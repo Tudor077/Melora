@@ -122,6 +122,9 @@ export function useMeloraApp() {
     setClientIdState(null);
   }, []);
   const [loading, setLoading] = useState(false);
+  // Separate from `loading` (which also covers saving a playlist) so the UI
+  // can say "Refreshing…" only when a batch is actually being generated.
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cadence, setCadence] = useState<DiscoveryCadence>("hourly");
   const [sortField, setSortField] = useState<SortField>("bpm");
@@ -202,6 +205,7 @@ export function useMeloraApp() {
       // embed doesn't keep playing something that's no longer on screen.
       stopPlayback();
       setLoading(true);
+      setRefreshing(true);
       setError(null);
       setPlaylistUrl(null);
 
@@ -260,6 +264,7 @@ export function useMeloraApp() {
         setError(err instanceof Error ? err.message : "Failed to load recommendations");
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     },
     // Deliberately not depending on sort/filters: those are view state, and
@@ -564,6 +569,7 @@ export function useMeloraApp() {
     saveClientId,
     changeClientId,
     loading,
+    refreshing,
     error,
     cadence,
     setCadence,

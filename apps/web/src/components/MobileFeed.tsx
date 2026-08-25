@@ -96,8 +96,17 @@ export function MobileFeed({ app, embed, tracks }: MobileFeedProps) {
           <span className="eyebrow">Melora</span>
         </span>
         <div className="mobile-bar-actions">
-          <button className="mobile-icon-btn" onClick={() => app.refreshSession()} disabled={app.loading} aria-label="Refresh">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button
+            className="mobile-icon-btn"
+            onClick={() => app.refreshSession()}
+            disabled={app.loading}
+            aria-label="Refresh"
+            aria-busy={app.refreshing}
+          >
+            <svg
+              className={app.refreshing ? "spin" : ""}
+              width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            >
               <path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
@@ -120,6 +129,9 @@ export function MobileFeed({ app, embed, tracks }: MobileFeedProps) {
         </a>
       )}
       {app.error && <p className="mobile-toast error">{app.error}</p>}
+      {app.refreshing && tracks.length > 0 && (
+        <p className="mobile-toast">Finding new songs…</p>
+      )}
 
       {app.loading && tracks.length === 0 ? (
         <div className="mobile-loading">Finding songs you'll love…</div>
