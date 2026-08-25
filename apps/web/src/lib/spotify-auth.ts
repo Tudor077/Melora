@@ -150,6 +150,18 @@ export async function startSpotifyLogin(): Promise<void> {
 
   if (IS_TAURI) {
     // Open Spotify auth in the system browser, not the in-app WebView.
+    //
+    // Inside a Linux AppImage the bundle's library paths leak into whatever
+    // the opener plugin spawns, and the browser dies before it appears — so
+    // try the Rust command that scrubs that environment first. It declines on
+    // Windows and macOS, which keeps their existing path untouched.
+    try {
+      const { invoke } = await import(/* @vite-ignore */ "@tauri-apps/api/core");
+      await invoke("open_external", { url: authUrl });
+      return;
+    } catch {
+      // Not Linux, or no browser could be launched: fall through to the plugin.
+    }
     const { openUrl } = await import(/* @vite-ignore */ "@tauri-apps/plugin-opener");
     await openUrl(authUrl);
   } else {
