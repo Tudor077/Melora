@@ -1038,3 +1038,57 @@ input[type="number"] {
   color: rgba(255, 255, 255, 0.4);
   letter-spacing: 0.04em;
 }
+
+/* Preferences panel */
+.prefs-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin: 4px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prefs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prefs-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+  margin: 0;
+}
+
+.prefs-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.prefs-input {
+  flex: 1;
+  max-width: 260px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.prefs-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.prefs-note {
+  font-size: 0.8rem;
+  opacity: 0.5;
+  margin: 0;
+}

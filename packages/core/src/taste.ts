@@ -113,7 +113,9 @@ export async function buildTasteProfile(
   const [artistTermResults, trackTermResults, savedPages, playlistsResult] = await Promise.all([
     Promise.allSettled(TERM_WEIGHTS.map(({ term }) => client.getTopArtists(30, term))),
     Promise.allSettled(TRACK_TERMS.map(({ term }) => client.getTopTracks(50, term))),
-    Promise.allSettled([client.getSavedTracks(50, 0)]),
+    // Liked Songs are the strongest deliberate signal the account holds, so
+    // they get two pages; the profile is rebuilt daily, so the cost is small.
+    Promise.allSettled([client.getSavedTracks(50, 0), client.getSavedTracks(50, 50)]),
     client.getUserPlaylists(20).catch(() => null),
   ]);
 
@@ -213,7 +215,7 @@ export async function buildTasteProfile(
     const picks = playlistsResult.items
       .filter((playlist) => (playlist.tracks?.total ?? 0) > 0)
       .sort((a, b) => (b.tracks?.total ?? 0) - (a.tracks?.total ?? 0))
-      .slice(0, 2);
+      .slice(0, 3);
     const results = await Promise.allSettled(picks.map((playlist) => client.getPlaylistTracks(playlist.id, 40)));
     for (const result of results) {
       if (result.status !== "fulfilled") continue;

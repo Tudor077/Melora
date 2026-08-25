@@ -104,6 +104,20 @@ export interface DiscoveryFilters {
   excludeExplicit?: boolean;
 }
 
+/**
+ * What the user told us they want to hear, from the Preferences panel.
+ * Unlike filters (which trim an existing batch), preferences shape which
+ * searches run in the first place.
+ */
+export interface DiscoveryPreferences {
+  /** Genres to focus on right now; they take most of the genre-wave slots. */
+  genres: string[];
+  /** 0 = stick close to my taste, 1 = surprise me. Default 0.4. */
+  adventurousness?: number;
+  /** Which era to lean into. Default "mixed". */
+  era?: "new" | "mixed" | "classics";
+}
+
 export interface EnrichedTrack {
   track: SpotifyTrack;
   features: AudioFeatures | null;

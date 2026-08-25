@@ -6,6 +6,13 @@ import { TrackCard } from "./components/TrackCard";
 import { MobileFeed } from "./components/MobileFeed";
 import { SpotifySetup } from "./components/SpotifySetup";
 import { CadenceToggle } from "./components/CadenceToggle";
+import { PreferencesPanel } from "./components/PreferencesPanel";
+
+// Offered as chips when the session hasn't produced genre labels yet.
+const DEFAULT_GENRE_SUGGESTIONS = [
+  "pop", "rock", "hip hop", "electronic", "house", "techno",
+  "jazz", "metal", "indie", "r&b", "drum and bass", "ambient",
+];
 
 function formatExpiry(iso: string, now: number): string {
   const diff = new Date(iso).getTime() - now;
@@ -43,6 +50,7 @@ export default function App() {
   const [bpmBand, setBpmBand] = useState<BpmBand>("all");
   const [query, setQuery] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [showPrefs, setShowPrefs] = useState(false);
 
   // Live clock for the countdown + kill the browser right-click context menu
   // (this is a native-feeling app, not a web page).
@@ -145,6 +153,13 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           <button
+            className={`ghost ${showPrefs ? "active" : ""}`}
+            onClick={() => setShowPrefs((v) => !v)}
+            title="Choose what you want to hear"
+          >
+            Preferences{app.preferences.genres.length > 0 ? ` (${app.preferences.genres.length})` : ""}
+          </button>
+          <button
             className="ghost"
             onClick={() => app.refreshSession()}
             disabled={app.loading || app.refreshesLeft === 0}
@@ -162,6 +177,14 @@ export default function App() {
       </header>
 
       <CadenceToggle cadence={app.cadence} onChange={app.setCadence} />
+
+      {showPrefs && (
+        <PreferencesPanel
+          preferences={app.preferences}
+          onChange={app.setPreferences}
+          genreSuggestions={[...app.pinnedGenres, ...app.availableGenres, ...DEFAULT_GENRE_SUGGESTIONS]}
+        />
+      )}
 
       <div className="chip-row bpm-filter">
         {BPM_BANDS.map((band) => (

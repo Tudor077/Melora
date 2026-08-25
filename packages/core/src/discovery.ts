@@ -28,6 +28,7 @@ import {
 import type {
   DiscoveryCadence,
   DiscoveryFilters,
+  DiscoveryPreferences,
   DiscoverySession,
   EnrichedTrack,
   SortOption,
@@ -62,6 +63,13 @@ export interface GenerateDiscoveryOptions {
   feedback?: FeedbackStore;
   /** Rebuild the taste profile even if a fresh one is cached. */
   forceProfile?: boolean;
+  /** User-declared listening preferences (Preferences panel). */
+  preferences?: DiscoveryPreferences;
+  /**
+   * Recent search-box terms, newest first. Searching for something is an
+   * interest signal; one term per batch gets its own discovery query.
+   */
+  searchInterests?: string[];
 }
 
 function cadenceToMs(cadence: DiscoveryCadence): number {
@@ -340,6 +348,8 @@ interface CollectContext {
   dislikedArtists: Set<string>;
   /** Cache-backed /search; repeat queries within the TTL cost no API call. */
   cachedSearch: CachedSearch;
+  preferences: DiscoveryPreferences;
+  searchInterests: string[];
 }
 
 /**
@@ -354,9 +364,19 @@ async function collectCandidates(
   client: SpotifyClient,
   limit: number,
   context: CollectContext,
-): Promise<{ candidates: Candidate[]; trace: string[] }> {
-  const { profile, feedback, rotation, random, now, extraGenres, dislikedArtists, cachedSearch } =
-    context;
+): Promise<{ candidates: Candidate[]; reserve: Candidate[]; trace: string[] }> {
+  const {
+    profile,
+    feedback,
+    rotation,
+    random,
+    now,
+    extraGenres,
+    dislikedArtists,
+    cachedSearch,
+    preferences,
+    searchInterests,
+  } = context;
   const { search } = cachedSearch;
   void client;
 
@@ -368,6 +388,10 @@ async function collectCandidates(
   // Normalised "name|artist" -> candidate id, so the single and the album cut
   // of the same song collapse into one candidate instead of two batch slots.
   const keyToId = new Map<string, string>();
+  // New tracks by artists the user already knows. Not discovery, so they are
+  // rejected from the main pool — but when the strict filters leave the batch
+  // short of `limit`, they are far better filler than empty grid slots.
+  const reserve = new Map<string, Candidate>();
   // Waves swallow individual failures on purpose (one bad query must not sink
   // the batch), but when *everything* fails the user deserves the real error,
   // not a silent empty screen.
@@ -403,7 +427,7 @@ async function collectCandidates(
   const absorb = (
     tracks: SpotifyTrack[],
     source: CandidateSource,
-    opts: { allowKnownArtist?: boolean; maxAgeDays?: number } = {},
+    opts: { allowKnownArtist?: boolean; maxAgeDays?: number; titleBaitTerm?: string } = {},
   ) => {
     for (const track of tracks) {
       if (!track?.id) continue;
@@ -414,18 +438,38 @@ async function collectCandidates(
       const primary = track.artists[0];
       if (!primary) continue;
       if (dislikedArtists.has(primary.id)) continue;
-      if (!opts.allowKnownArtist && knownArtistIds.has(primary.id)) continue;
       if (opts.maxAgeDays != null) {
         const age = daysSinceRelease(track, now);
         if (age == null || age > opts.maxAgeDays) continue;
       }
 
+      // Free-text genre queries match titles, so "breakcore" returns a pile
+      // of tracks literally *named* breakcore. A track named after the genre
+      // we searched is usually tag-spam — keep it reachable, but quiet.
+      let effective = source;
+      if (opts.titleBaitTerm) {
+        const bait = opts.titleBaitTerm.toLowerCase();
+        if (
+          track.name.toLowerCase().includes(bait) ||
+          (track.album?.name ?? "").toLowerCase().includes(bait)
+        ) {
+          effective = { ...source, strength: source.strength * 0.25 };
+        }
+      }
+
+      if (!opts.allowKnownArtist && knownArtistIds.has(primary.id)) {
+        if (!reserve.has(track.id) && reserve.size < 40) {
+          reserve.set(track.id, { track, sources: [effective] });
+        }
+        continue;
+      }
+
       const existingId = candidates.has(track.id) ? track.id : keyToId.get(key);
       const existing = existingId ? candidates.get(existingId) : undefined;
       if (existing) {
-        existing.sources.push(source);
+        existing.sources.push(effective);
       } else {
-        candidates.set(track.id, { track, sources: [source] });
+        candidates.set(track.id, { track, sources: [effective] });
         keyToId.set(key, track.id);
       }
     }
@@ -446,8 +490,12 @@ async function collectCandidates(
   const core = ranked.slice(0, 14);
   const tail = ranked.slice(14, 45);
 
+  // How eager the batch is to leave the comfort zone. Low: hammer the top
+  // genres. High: flatten the exploit weights and take a second explore slot.
+  const adventure = Math.max(0, Math.min(1, preferences.adventurousness ?? 0.4));
+
   const exploit = weightedSample(
-    core.map((entry) => ({ item: entry.genre, weight: entry.weight ** 1.5 })),
+    core.map((entry) => ({ item: entry.genre, weight: entry.weight ** (2 - adventure) })),
     5,
     random,
   );
@@ -455,21 +503,33 @@ async function collectCandidates(
   // the app never surfaces a corner of the library the user forgot about.
   const explore = weightedSample(
     tail.map((entry) => ({ item: entry.genre, weight: Math.max(entry.weight, 0.05) })),
-    2,
+    adventure >= 0.65 ? 2 : 1,
     random,
   );
-  // Caller-supplied genres (MusicBrainz tags, genres the user pinned by hand)
-  // are the only signal there is for niche artists, so they take fixed slots.
-  const pinned = shuffle([...new Set(extraGenres)].filter(cleanGenre), random).slice(0, 2);
+  // Explicit choices outrank everything inferred: Preferences-panel genres
+  // first, then pinned genres (MusicBrainz tags, hand-pinned). Together they
+  // may take up to 3 of the slots, so inferred taste always keeps at least one.
+  const chosen = shuffle(
+    [...new Set([...preferences.genres, ...extraGenres].map((g) => g.toLowerCase().trim()))].filter(
+      cleanGenre,
+    ),
+    random,
+  ).slice(0, 3);
+
+  // A recent search is the freshest interest signal there is; one term per
+  // batch gets a slot, rotating through the history across refreshes.
+  const interestTerms = searchInterests.map((t) => t.toLowerCase().trim()).filter(cleanGenre);
+  const interest =
+    interestTerms.length > 0 ? [interestTerms[rotation % interestTerms.length] as string] : [];
 
   // Exploration goes ahead of the weakest exploit picks: appended last it
   // would be the first thing the cap below cuts, which is exactly backwards.
-  // Capped at 4: dev-mode quotas (2026) allow only 10-20 calls per window,
+  // Capped at 5: dev-mode quotas (2026) allow only 10-20 calls per window,
   // so every query has to earn its slot — a small, well-weighted slate beats
   // a wide one that gets the whole batch throttled.
   const searchGenres = [
-    ...new Set([...pinned, ...exploit.slice(0, 4), ...explore, ...exploit.slice(4)]),
-  ].slice(0, 4);
+    ...new Set([...chosen, ...interest, ...exploit.slice(0, 3), ...explore, ...exploit.slice(3)]),
+  ].slice(0, 5);
   if (searchGenres.length === 0) searchGenres.push("pop", "hip hop", "electronic", "rock");
 
   trace.push(
@@ -485,13 +545,25 @@ async function collectCandidates(
   // music by how modern their library is, and rotated so refresh #2 does not
   // ask the same years as refresh #1.
   const currentYear = new Date(now).getFullYear();
-  const eraYear = Math.min(currentYear, Math.max(1960, profile.eraMedianYear));
-  const yearPool = [
+  const eraYear = Math.min(
     currentYear,
-    currentYear - 1,
-    currentYear - 2,
-    ...(profile.recentShare < 0.6 ? [eraYear, eraYear - 1, eraYear + 1] : [currentYear - 3]),
-  ].filter((year, index, all) => year <= currentYear && all.indexOf(year) === index);
+    Math.max(1960, Number.isFinite(profile.eraMedianYear) ? profile.eraMedianYear : currentYear - 4),
+  );
+  // The era preference overrides the inferred mix: "new" asks only recent
+  // years, "classics" leans into the library's own era, "mixed" blends.
+  const eraChoice = preferences.era ?? "mixed";
+  const yearPool = (
+    eraChoice === "new"
+      ? [currentYear, currentYear - 1, currentYear - 2]
+      : eraChoice === "classics"
+        ? [eraYear, eraYear - 1, eraYear + 1, eraYear - 2, currentYear - 1]
+        : [
+            currentYear,
+            currentYear - 1,
+            currentYear - 2,
+            ...(profile.recentShare < 0.6 ? [eraYear, eraYear - 1, eraYear + 1] : [currentYear - 3]),
+          ]
+  ).filter((year, index, all) => year <= currentYear && all.indexOf(year) === index);
 
   // ---- Wave 1: collaborations ------------------------------------------
   // Tracks where a favourite artist appears but somebody new is fronting it
@@ -553,46 +625,69 @@ async function collectCandidates(
   if (rateLimited()) {
     trace.push("rate limited — skipping remaining waves");
     if (candidates.size === 0) throw waveErrors[0];
-    return { candidates: [...candidates.values()], trace };
+    return { candidates: [...candidates.values()], reserve: [...reserve.values()], trace };
   }
 
   // ---- Wave 2: genre + year -------------------------------------------
-  // One query per genre — the request budget no longer allows both shapes.
-  // The top genres get the precise `genre:"x"` filter (Spotify's own answer);
-  // the rest get the noisier free-text form, which always returns something,
-  // so an unsupported genre filter degrades instead of emptying the batch.
+  // Every genre gets the precise `genre:"x"` filter — Spotify's own answer
+  // about what the track *is*. Free-text is no longer a first choice: it
+  // matches titles, which for a genre like "breakcore" fills the batch with
+  // tracks literally named after the genre instead of tracks in it.
   const genreQueries = searchGenres.map((genre, index) => {
     const year = yearPool[(index + rotation) % yearPool.length] as number;
     const base = (rotation % 4) * 10;
-    const precise = index < 2;
-    return {
-      genre,
-      q: precise ? `genre:"${genre}" year:${year}` : `${genre} year:${year}`,
-      offset: base,
-      precise,
-    };
+    return { genre, q: `genre:"${genre}" year:${year}`, offset: base };
   });
   const genreResults = await Promise.allSettled(
     genreQueries.map(({ q, offset }) => search(q, 10, offset)),
   );
   noteFailures(genreResults);
+  // Genres whose precise filter came back empty (Spotify does not index every
+  // niche tag) fall back to free-text below, instead of silently vanishing.
+  const emptyFilterGenres: string[] = [];
   genreResults.forEach((result, index) => {
     if (result.status !== "fulfilled") return;
-    const query = genreQueries[index] as { genre: string; precise: boolean };
+    const query = genreQueries[index] as { genre: string };
+    const before = candidates.size;
     absorb(result.value.tracks.items, {
       kind: "genre",
       genre: query.genre,
-      // A title match is a guess about the genre; the filter is Spotify's own
-      // answer, so it carries more of the user's affinity into the score.
-      strength: genreWeight(query.genre) * (query.precise ? 1 : 0.7),
+      strength: genreWeight(query.genre),
     });
+    if (candidates.size === before && result.value.tracks.items.length === 0) {
+      emptyFilterGenres.push(query.genre);
+    }
   });
   traceWave("genre-year", genreResults);
+
+  // ---- Wave 2b: free-text rescue for unindexed genres ------------------
+  // Only for genres the filter could not serve. Title-bait (tracks named
+  // after the genre) is demoted hard inside absorb rather than trusted.
+  if (emptyFilterGenres.length > 0 && !rateLimited()) {
+    const rescueGenres = emptyFilterGenres.slice(0, 2);
+    const rescueResults = await Promise.allSettled(
+      rescueGenres.map((genre, index) => {
+        const year = yearPool[(index + rotation) % yearPool.length] as number;
+        return search(`${genre} year:${year}`, 10, (rotation % 4) * 10);
+      }),
+    );
+    noteFailures(rescueResults);
+    rescueResults.forEach((result, index) => {
+      if (result.status !== "fulfilled") return;
+      const genre = rescueGenres[index] as string;
+      absorb(
+        result.value.tracks.items,
+        { kind: "genre", genre, strength: genreWeight(genre) * 0.6 },
+        { titleBaitTerm: genre },
+      );
+    });
+    traceWave("genre-rescue", rescueResults);
+  }
 
   if (rateLimited()) {
     trace.push("rate limited — skipping remaining waves");
     if (candidates.size === 0) throw waveErrors[0];
-    return { candidates: [...candidates.values()], trace };
+    return { candidates: [...candidates.values()], reserve: [...reserve.values()], trace };
   }
 
   // ---- Wave 3: fresh drops from artists the user already loves ---------
@@ -620,16 +715,16 @@ async function collectCandidates(
   // The bar is `limit`, not a multiple of it: with a 10-20 call quota the
   // deep wave is a last resort for a starving batch, not a routine top-up.
   if (candidates.size >= limit || rateLimited()) {
-    return { candidates: [...candidates.values()], trace };
+    return { candidates: [...candidates.values()], reserve: [...reserve.values()], trace };
   }
 
-  // ---- Wave 4: plain genre text at deeper offsets ----------------------
+  // ---- Wave 4: genre filter at deeper offsets --------------------------
   const deepQueries = searchGenres.slice(0, 2).map((genre) => ({
     genre,
     offset: ((rotation % 5) + 2) * 10,
   }));
   const deepResults = await Promise.allSettled(
-    deepQueries.map(({ genre, offset }) => search(genre, 10, offset)),
+    deepQueries.map(({ genre, offset }) => search(`genre:"${genre}"`, 10, offset)),
   );
   noteFailures(deepResults);
   deepResults.forEach((result, index) => {
@@ -639,17 +734,22 @@ async function collectCandidates(
   });
   traceWave("deep", deepResults);
 
-  if (candidates.size > 0) return { candidates: [...candidates.values()], trace };
+  if (candidates.size > 0) return { candidates: [...candidates.values()], reserve: [...reserve.values()], trace };
 
   // ---- Last resort ------------------------------------------------------
   // Nothing matched, usually a brand-new account with no listening history.
   // Take whatever comes back rather than showing an empty screen.
-  const fallback = await search(searchGenres[0] ?? "new music", 10, 0).catch((error: unknown) => {
+  const fallbackTerm = searchGenres[0] ?? "new music";
+  const fallback = await search(fallbackTerm, 10, 0).catch((error: unknown) => {
     waveErrors.push(error);
     return null;
   });
   if (fallback) {
-    absorb(fallback.tracks.items, { kind: "fallback", strength: 0.2 }, { allowKnownArtist: true });
+    absorb(
+      fallback.tracks.items,
+      { kind: "fallback", strength: 0.2 },
+      { allowKnownArtist: true, titleBaitTerm: fallbackTerm },
+    );
   }
   trace.push(`fallback: ${fallback ? "ran" : "failed"} +${candidates.size - absorbedBefore}`);
 
@@ -658,7 +758,7 @@ async function collectCandidates(
   // instead of rendering "No tracks found" over a broken session.
   if (candidates.size === 0 && waveErrors.length > 0) throw waveErrors[0];
 
-  return { candidates: [...candidates.values()], trace };
+  return { candidates: [...candidates.values()], reserve: [...reserve.values()], trace };
 }
 
 export async function generateDiscoverySession(
@@ -676,6 +776,8 @@ export async function generateDiscoverySession(
     extraGenres = [],
     artistGenres = {},
     forceProfile,
+    preferences = { genres: [] },
+    searchInterests = [],
   } = options;
 
   const store = storage ?? (globalThis as { localStorage?: Storage }).localStorage;
@@ -701,7 +803,7 @@ export async function generateDiscoverySession(
   const dislikedArtists = new Set(dislikedArtistIds(feedback, now));
 
   const cachedSearch = createCachedSearch(client, store);
-  const { candidates, trace } = await collectCandidates(client, limit, {
+  const { candidates, reserve, trace } = await collectCandidates(client, limit, {
     profile,
     feedback,
     rotation,
@@ -710,6 +812,8 @@ export async function generateDiscoverySession(
     extraGenres,
     dislikedArtists,
     cachedSearch,
+    preferences,
+    searchInterests,
   });
   trace.push(`search: ${cachedSearch.apiCalls()} API calls, ${cachedSearch.cacheHits()} cache hits`);
 
@@ -725,7 +829,30 @@ export async function generateDiscoverySession(
   const fresh = scored.filter(isFreshDrop).sort((a, b) => b.score - a.score).slice(0, freshCap);
   const rest = scored.filter((candidate) => !isFreshDrop(candidate));
 
-  const selected = selectDiverse([...rest, ...fresh], { limit });
+  let selected = selectDiverse([...rest, ...fresh], { limit });
+
+  // Strict filtering can leave the grid with holes. New tracks by artists the
+  // user already knows are not discovery, but they beat empty slots — top up
+  // from the reserve, which costs no extra API calls.
+  if (selected.length < limit && reserve.length > 0) {
+    // Dedupe by id *and* normalised key: a reserve track may be the album cut
+    // of something the main pool already contributed.
+    const takenIds = new Set(selected.map((candidate) => candidate.track.id));
+    const takenKeys = new Set(selected.map((candidate) => trackKey(candidate.track)));
+    const fillers = selectDiverse(
+      reserve
+        .filter(
+          (candidate) =>
+            !takenIds.has(candidate.track.id) && !takenKeys.has(trackKey(candidate.track)),
+        )
+        .map((candidate) => scoreCandidate(candidate, { profile, feedback, now, random })),
+      // Slightly looser per-artist cap than the main pass: a third track by a
+      // familiar artist still reads better than an empty slot.
+      { limit: limit - selected.length, maxPerArtist: 3, artistPenalty: 0.8 },
+    );
+    selected = [...selected, ...fillers];
+    trace.push(`gap fill: +${fillers.length} known-artist tracks from reserve`);
+  }
 
   let enriched = await enrichTracks(client, selected, artistGenres, vibes, bpmFallback);
 

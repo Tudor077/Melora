@@ -17,6 +17,7 @@ import {
   uniqueGenres,
   type DiscoveryCadence,
   type DiscoveryFilters,
+  type DiscoveryPreferences,
   type DiscoverySession,
   type EnrichedTrack,
   type FeedbackEvent,
@@ -30,8 +31,50 @@ import { stopPlayback } from "./useSpotifyEmbed";
 
 const PINNED_GENRES_KEY = "melora:pinned-genres:v1";
 const REFRESH_TIMES_KEY = "melora:refresh-times:v1";
+const PREFERENCES_KEY = "melora:preferences:v1";
+const SEARCH_HISTORY_KEY = "melora:search-history:v1";
 const MAX_REFRESH_PER_HOUR = 5;
 const HOUR_MS = 60 * 60 * 1000;
+const SEARCH_HISTORY_TTL_MS = 30 * 24 * HOUR_MS;
+
+function loadPreferences(): DiscoveryPreferences {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? "null") as
+      | DiscoveryPreferences
+      | null;
+    if (parsed && Array.isArray(parsed.genres)) return parsed;
+  } catch {
+    // fall through to defaults
+  }
+  return { genres: [] };
+}
+
+interface SearchHistoryEntry {
+  q: string;
+  at: number;
+}
+
+function loadSearchHistory(): SearchHistoryEntry[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) ?? "[]") as SearchHistoryEntry[];
+    return parsed.filter((entry) => Date.now() - entry.at < SEARCH_HISTORY_TTL_MS);
+  } catch {
+    return [];
+  }
+}
+
+/** Newest first, deduped, capped — a search is an interest vote. */
+function recordSearchTerm(term: string): void {
+  const clean = term.toLowerCase().trim();
+  if (clean.length < 3 || clean.length > 40) return;
+  try {
+    const rest = loadSearchHistory().filter((entry) => entry.q !== clean);
+    const next = [{ q: clean, at: Date.now() }, ...rest].slice(0, 12);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    // best-effort
+  }
+}
 
 function loadRefreshTimes(): number[] {
   try {
@@ -90,6 +133,20 @@ export function useMeloraApp() {
   // Ref mirrors pinnedGenres synchronously so a refresh fired right after
   // add/remove sees the new list (state updates are async)
   const pinnedGenresRef = useRef<string[]>(pinnedGenres);
+
+  // Preferences panel: what the user explicitly wants to hear. Ref for the
+  // same reason as pinned genres — refresh reads it inside an async callback.
+  const [preferences, setPreferencesState] = useState<DiscoveryPreferences>(loadPreferences);
+  const preferencesRef = useRef<DiscoveryPreferences>(preferences);
+  const setPreferences = useCallback((next: DiscoveryPreferences) => {
+    preferencesRef.current = next;
+    try {
+      localStorage.setItem(PREFERENCES_KEY, JSON.stringify(next));
+    } catch {
+      // best-effort
+    }
+    setPreferencesState(next);
+  }, []);
 
   // Hearts, skips and impressions from earlier batches. Kept in a ref because
   // discovery reads it inside an async callback, where a state snapshot would
@@ -185,6 +242,8 @@ export function useMeloraApp() {
           artistGenres,
           profile,
           feedback: feedbackRef.current,
+          preferences: preferencesRef.current,
+          searchInterests: loadSearchHistory().map((entry) => entry.q),
         };
         let nextSession;
         if (force) {
@@ -433,14 +492,21 @@ export function useMeloraApp() {
   // a song title, an artist, or a genre word ("techno", "lofi") all work.
   const [searchResults, setSearchResults] = useState<EnrichedTrack[] | null>(null);
   const [searching, setSearching] = useState(false);
+  // The term the user last let sit. Recorded into search history only after
+  // 4s of stability, so "brea", "break", "breakc"… don't pollute the signal.
+  const lastSearchRef = useRef<string>("");
   const runSearch = useCallback(
     async (query: string) => {
       const q = query.trim();
+      lastSearchRef.current = q.toLowerCase();
       if (!q) {
         setSearchResults(null);
         setSearching(false);
         return;
       }
+      window.setTimeout(() => {
+        if (lastSearchRef.current === q.toLowerCase()) recordSearchTerm(q);
+      }, 4000);
       setSearching(true);
       try {
         // Dev-mode caps /search at limit=10, so pull two pages for ~20 hits.
@@ -519,6 +585,8 @@ export function useMeloraApp() {
     pinnedGenres,
     addPinnedGenre,
     removePinnedGenre,
+    preferences,
+    setPreferences,
     login: () => { void startSpotifyLogin(); },
     logout: () => {
       logout();
