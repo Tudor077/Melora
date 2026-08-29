@@ -59,11 +59,35 @@ acțiune × țintă și caută acorduri stricate, generează misiuni pe tot slid
 scenele și caută constrângeri contradictorii, apoi compară numărul afișat în UI cu o
 enumerare prin forță brută.
 
-## Pe telefon
+## Instalare pe telefon
 
-E un PWA: deschizi build-ul servit static, **Adaugă pe ecranul principal**, și după prima
-încărcare merge complet offline (service worker cache-first). Progresul — puncte, nivel,
-jurnal — stă în `localStorage`, pe telefon, și nu pleacă nicăieri.
+Nu e din magazin de aplicații — e un PWA, adică se instalează direct din browser și după
+prima încărcare merge complet offline.
+
+`npm run build` scrie direct în folderul **`sidequest/`** din rădăcina repo-ului, lângă
+`download.html`, adică exact ce publică deja GitHub Pages. După ce ajunge pe `master`:
+
+> **https://tudor077.github.io/Melora/sidequest/**
+
+- **Android (Chrome):** deschide linkul → meniul ⋮ → **Adaugă la ecranul principal**
+  (sau bannerul „Instalează aplicația", dacă apare).
+- **iPhone (Safari — trebuie Safari, nu Chrome):** deschide linkul → butonul de
+  **Partajare** → **Adaugă la ecranul de pornire**.
+
+După instalare, deschide-o o dată cât ai semnal ca să se cacheze, apoi merge în avion, în
+metrou și în roaming. Progresul — puncte, nivel, jurnal — stă în `localStorage`, pe telefon,
+și nu pleacă nicăieri.
+
+### Ca s-o testezi înainte de publicare
+
+De pe același Wi-Fi ca telefonul:
+
+```bash
+npm run dev --workspace @melora/sidequests -- --host   # afișează un URL http://192.168.x.x:5175
+```
+
+Deschizi acel URL pe telefon. Merge tot, mai puțin instalarea offline: service worker-ul
+cere HTTPS sau `localhost`, deci pe IP din rețea rămâne doar în browser.
 
 ## Structură
 

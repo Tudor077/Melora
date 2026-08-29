@@ -47,6 +47,10 @@ Melora/
 └── apps/sidequests/   Sidequest — offline tourist-quest generator (own product, see its README)
 ```
 
+`apps/sidequests` builds into `sidequest/` at the repo root, so the Pages site serves it at
+[/Melora/sidequest/](https://tudor077.github.io/Melora/sidequest/) — install it from a phone
+browser with **Add to Home Screen**. See [apps/sidequests/README.md](apps/sidequests/README.md).
+
 ## Spotify Developer setup (start here)
 
 Here's the full flow:
