@@ -43,8 +43,13 @@ Melora/
 ├── packages/core/     Shared Spotify client, vibes, sorting, discovery logic
 ├── apps/web/          Vite + React (primary UI today)
 ├── apps/desktop/      Tauri shell wrapping the web app
-└── apps/mobile/       Expo shell sharing @melora/core
+├── apps/mobile/       Expo shell sharing @melora/core
+└── apps/sidequests/   Sidequest — offline tourist-quest generator (own product, see its README)
 ```
+
+`apps/sidequests` builds into `sidequest/` at the repo root, so the Pages site serves it at
+[/Melora/sidequest/](https://tudor077.github.io/Melora/sidequest/) — install it from a phone
+browser with **Add to Home Screen**. See [apps/sidequests/README.md](apps/sidequests/README.md).
 
 ## Spotify Developer setup (start here)
 
@@ -156,6 +161,7 @@ and nothing about your listening leaves your machine.
 | `npm run dev:mobile` | Expo dev server |
 | `npm run build` | Build all workspaces |
 | `npm run build:linux` | Build the Linux AppImage into `releases/latest/` (Linux only) |
+| `npm run dev:sidequests` | Start the Sidequest app (see `apps/sidequests/README.md`) |
 
 ## Spotify API scopes used
 

@@ -9,6 +9,7 @@
     "dev:web:5174": "npm run dev:5174 --workspace @melora/web",
     "dev:desktop": "npm run tauri dev --workspace @melora/desktop",
     "dev:mobile": "npm run start --workspace @melora/mobile",
+    "dev:sidequests": "npm run dev --workspace @melora/sidequests",
     "build": "npm run build --workspaces --if-present",
     "build:web": "npm run build --workspace @melora/web",
     "build:linux": "node scripts/build-linux.mjs",
