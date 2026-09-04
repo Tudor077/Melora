@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { FreePlanNotice } from "./FreePlanNotice";
+import { OpenInSpotify } from "./OpenInSpotify";
 import type { EnrichedTrack } from "@melora/core";
 import type { useMeloraApp } from "../hooks/useMeloraApp";
 import type { useSpotifyEmbed } from "../hooks/useSpotifyEmbed";
@@ -129,6 +131,7 @@ export function MobileFeed({ app, embed, tracks }: MobileFeedProps) {
         </a>
       )}
       {app.error && <p className="mobile-toast error">{app.error}</p>}
+      <FreePlanNotice plan={app.plan} />
       {app.refreshing && tracks.length > 0 && (
         <p className="mobile-toast">Finding new songs…</p>
       )}
@@ -201,6 +204,7 @@ export function MobileFeed({ app, embed, tracks }: MobileFeedProps) {
                         </button>
                       );
                     })()}
+                    <OpenInSpotify track={track} variant="mobile" />
                   </div>
                   <div className="mobile-progress">
                     <div className="mobile-progress-fill" style={{ width: `${progress * 100}%` }} />

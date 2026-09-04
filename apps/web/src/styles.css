@@ -431,6 +431,34 @@ input[type="number"] {
   transform: scale(1.12);
 }
 
+/* Sits under the heart, same treatment — the escape hatch to full playback. */
+.card-open {
+  position: absolute;
+  top: 3.1rem;
+  right: 0.6rem;
+  z-index: 4;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease, transform 120ms ease, color 160ms ease;
+  backdrop-filter: blur(4px);
+}
+.track-card:hover .card-open {
+  opacity: 1;
+}
+.card-open:hover {
+  transform: scale(1.12);
+  color: var(--accent);
+}
+
 /* ── TRACK CARD ── */
 .track-card {
   background: var(--panel);
@@ -1010,6 +1038,25 @@ input[type="number"] {
   transition: 160ms ease;
 }
 
+.mobile-open {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 160ms ease;
+}
+
+.mobile-open:active {
+  transform: scale(0.94);
+  color: var(--accent);
+}
+
 .mobile-like.liked {
   color: var(--accent);
   border-color: rgba(30, 215, 96, 0.5);
@@ -1122,4 +1169,51 @@ input[type="number"] {
   opacity: 0.45;
   pointer-events: none;
   transition: opacity 0.2s ease;
+}
+
+/* ── FREE PLAN NOTICE ── */
+.free-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(30, 215, 96, 0.28);
+  border-radius: 14px;
+  background: rgba(30, 215, 96, 0.07);
+}
+
+.free-note p {
+  margin: 0;
+  flex: 1;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.free-note-close {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.free-note-close:hover {
+  color: #fff;
+}
+
+/* On the phone the note floats over the feed like the other toasts. */
+.mobile-feed-wrap .free-note {
+  position: absolute;
+  top: 3.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+  margin: 0;
+  background: rgba(18, 18, 18, 0.94);
+  backdrop-filter: blur(8px);
 }

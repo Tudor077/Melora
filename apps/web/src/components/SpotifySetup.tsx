@@ -1,21 +1,8 @@
 import { useState } from "react";
+import { openExternal } from "../lib/open-external";
 
-const IS_TAURI = Boolean(import.meta.env.TAURI_ENV_PLATFORM);
 const DASHBOARD_URL = "https://developer.spotify.com/dashboard";
 const REDIRECT_URI = "melora://callback";
-
-async function openExternal(url: string) {
-  if (IS_TAURI) {
-    try {
-      const { openUrl } = await import(/* @vite-ignore */ "@tauri-apps/plugin-opener");
-      await openUrl(url);
-      return;
-    } catch {
-      /* fall through to anchor */
-    }
-  }
-  window.open(url, "_blank", "noopener");
-}
 
 /**
  * First-run setup for distributed builds: the user pastes the Client ID of

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { EnrichedTrack } from "@melora/core";
+import { OpenInSpotify } from "./OpenInSpotify";
 
 interface TrackCardProps {
   entry: EnrichedTrack;
@@ -30,6 +31,7 @@ export function TrackCard({ entry, isActive, isPlaying, progress, isLiked, onTog
             <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        <OpenInSpotify track={track} variant="card" />
         <div className="track-play-overlay">
           <div className="track-play-icon">
             {isPlaying ? (

@@ -158,14 +158,32 @@ export interface RecommendationSeedOptions {
 // Only the scopes Melora actually uses, to keep the consent screen minimal:
 // top artists/tracks + Liked Songs + own playlists (discovery taste profile),
 // library modify (heart button), and creating private playlists.
-// Dropped: user-read-private, user-read-email, playlist-modify-public (unused).
+// Dropped: user-read-email, playlist-modify-public (unused).
 export const SPOTIFY_SCOPES = [
+  // `user-read-private` is what makes /me return `product`, which is how we
+  // tell a free account from a Premium one. Every scope here works on a free
+  // account — Melora asks for nothing Premium-only.
+  "user-read-private",
   "user-top-read",
   "user-library-read",
   "user-library-modify",
   "playlist-read-private",
   "playlist-modify-private",
 ] as const;
+
+/**
+ * Which Spotify plan the logged-in account is on. "unknown" is a real state,
+ * not a failure: a token minted before `user-read-private` was requested comes
+ * back without `product`, and the UI must stay usable in that case.
+ */
+export type SpotifyPlan = "premium" | "free" | "unknown";
+
+export function planFromUser(user: { product?: string } | null | undefined): SpotifyPlan {
+  if (user?.product === "premium") return "premium";
+  // Spotify reports the ad-supported tier as "free" and, historically, "open".
+  if (user?.product === "free" || user?.product === "open") return "free";
+  return "unknown";
+}
 
 export const DEFAULT_VIBES: VibeProfile[] = [
   {

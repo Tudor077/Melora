@@ -3,6 +3,7 @@ import { useMeloraApp } from "./hooks/useMeloraApp";
 import { useSpotifyEmbed } from "./hooks/useSpotifyEmbed";
 import { useIsMobile } from "./hooks/useIsMobile";
 import { TrackCard } from "./components/TrackCard";
+import { FreePlanNotice } from "./components/FreePlanNotice";
 import { MobileFeed } from "./components/MobileFeed";
 import { SpotifySetup } from "./components/SpotifySetup";
 import { CadenceToggle } from "./components/CadenceToggle";
@@ -183,6 +184,8 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <FreePlanNotice plan={app.plan} />
 
       <CadenceToggle cadence={app.cadence} onChange={app.setCadence} />
 

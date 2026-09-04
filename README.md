@@ -165,9 +165,27 @@ and nothing about your listening leaves your machine.
 
 ## Spotify API scopes used
 
-- `user-read-private`, `user-read-email`
-- `user-top-read`, `user-library-read`
-- `playlist-read-private`, `playlist-modify-public`, `playlist-modify-private`
+Every scope below works on a **free** Spotify account — Melora asks for nothing Premium-only
+(no `streaming`, no playback-control scopes).
+
+- `user-read-private` — reads `product` from `/me`, which is how the app tells free from Premium
+- `user-top-read`, `user-library-read`, `user-library-modify`
+- `playlist-read-private`, `playlist-modify-private`
+
+## Free vs Premium
+
+**Melora works on a free account.** Discovery, filters, BPM, the heart button and playlist
+export all work the same on either plan.
+
+The one difference is playback, and it is Spotify's rule rather than Melora's: in-app playback
+goes through Spotify's embed player, which serves the **full track only to logged-in Premium
+listeners** and a **30-second preview** to everyone else. So on a free account:
+
+- every track carries a **Spotify button** that opens it in the Spotify app for the full song;
+- the mobile feed's auto-advance lines up with the 30-second preview;
+- a one-time note explains this the first time a free account signs in.
+
+There is no way around the preview limit from inside the app — it is licensing, not a setting.
 
 ## Next steps
 

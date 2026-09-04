@@ -13,6 +13,7 @@ import {
   saveFeedback,
   sortTracks,
   SORT_OPTIONS,
+  planFromUser,
   topArtistNames,
   uniqueGenres,
   type DiscoveryCadence,
@@ -24,6 +25,7 @@ import {
   type FeedbackStore,
   type SortField,
   type SortOption,
+  type SpotifyPlan,
 } from "@melora/core";
 import { lookupBpms } from "../lib/bpm-lookup";
 import { cachedArtistGenreMap, lookupArtistGenreMap } from "../lib/artist-genres";
@@ -185,6 +187,32 @@ export function useMeloraApp() {
   );
 
   const client = useMemo(() => getSpotifyClient(), []);
+
+  // Which plan the account is on. Playback inside Melora goes through
+  // Spotify's embed, and Spotify serves a 30-second preview there to anyone
+  // who is not Premium — so the UI needs to know, to offer the full track in
+  // the Spotify app instead of leaving people staring at a stub.
+  const [plan, setPlan] = useState<SpotifyPlan>("unknown");
+  useEffect(() => {
+    if (!authed) {
+      setPlan("unknown");
+      return;
+    }
+    let cancelled = false;
+    void client
+      .getCurrentUser()
+      .then((user) => {
+        if (!cancelled) setPlan(planFromUser(user));
+      })
+      .catch(() => {
+        // A token minted before `user-read-private` was requested, or an
+        // offline start: "unknown" is a valid state, so stay quiet.
+        if (!cancelled) setPlan("unknown");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, client]);
   const sort: SortOption = useMemo(
     () => ({ field: sortField, direction: sortDirection }),
     [sortField, sortDirection],
@@ -565,6 +593,7 @@ export function useMeloraApp() {
 
   return {
     authed,
+    plan,
     clientId,
     saveClientId,
     changeClientId,
