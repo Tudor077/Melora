@@ -64,14 +64,35 @@ API names.
 
 ### 2. Libraries
 
-Download the bundle matching your CircuitPython **major** version from
+Two entries are needed in `CIRCUITPY/lib/`. Easiest way is `circup`, which reads
+the board's own CircuitPython version and fetches matching files, so there is no
+version to match by hand:
+
+```sh
+pip install circup
+circup install adafruit_displayio_ssd1306 adafruit_display_text
+```
+
+Run it with the board plugged in; `circup list` shows what is installed and
+`circup update` refreshes later.
+
+To do it by hand instead: check `CIRCUITPY/boot_out.txt` for your CircuitPython
+version (e.g. `Adafruit CircuitPython 9.2.1 on ...` — you need the major number),
+download the matching **`-mpy-`** bundle from
 [circuitpython.org/libraries](https://circuitpython.org/libraries)
-(*Adafruit CircuitPython Bundle*), then copy exactly these into `CIRCUITPY/lib/`:
+(*Adafruit CircuitPython Bundle*, e.g.
+`adafruit-circuitpython-bundle-9.x-mpy-YYYYMMDD.zip`), unzip it, and copy
+exactly these out of its `lib/` folder into `CIRCUITPY/lib/`:
 
 | Copy this | From the bundle's `lib/` | What for |
 |-----------|--------------------------|----------|
 | `adafruit_displayio_ssd1306.mpy` | file | the SSD1306 display driver |
 | `adafruit_display_text/` | whole folder | `label.Label` text rendering |
+
+The bundle's major version must match CircuitPython's. A 9.x bundle on
+CircuitPython 10 raises `ImportError: incompatible .mpy file`, which reads like a
+code bug but is just a version mismatch — re-download the right bundle. `circup`
+avoids this entirely.
 
 That is the complete list — two entries. Everything else this firmware uses
 (`displayio`, `terminalio`, `i2cdisplaybus`, `busio`, `digitalio`, `rotaryio`,
